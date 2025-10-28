@@ -1,201 +1,122 @@
-// ===============================
-// 🔐 Conexión con Supabase
-// ===============================
-const SUPABASE_URL = "https://zqypgiuuoxckvngxsugt.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxeXBnaXV1b3hja3ZuZ3hzdWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwODUwMDUsImV4cCI6MjA3NjY2MTAwNX0.7HhmphPoBvbj2tIJOY_gYkA_GwUHQ1x9YcehdAuVM04";
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('form-registro');
+  const togglePassword = document.getElementById('togglePassword');
+  const toggleConfirm = document.getElementById('toggleConfirm');
+  const imgPreview = document.getElementById('img-preview');
+  const fotoInput = document.getElementById('foto');
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ===============================
-// 🧠 Lógica principal
-// ===============================
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("form-registro");
-  const nombre = document.getElementById("nombre");
-  const correo = document.getElementById("correo");
-  const password = document.getElementById("password");
-  const confirmPassword = document.getElementById("confirmPassword");
-  const foto = document.getElementById("foto");
-  const imgPreview = document.getElementById("img-preview");
-  const togglePassword = document.getElementById("togglePassword");
-  const toggleConfirm = document.getElementById("toggleConfirm");
-
-  // ===============================
-  // 👁️ Mostrar / ocultar contraseñas
-  // ===============================
-  [togglePassword, toggleConfirm].forEach((btn) => {
-    btn?.addEventListener("click", () => {
-      const input = btn === togglePassword ? password : confirmPassword;
-      const type = input.type === "password" ? "text" : "password";
-      input.type = type;
-      btn.textContent = type === "password" ? "👁️" : "🙈";
-    });
+  // Toggle password visibility
+  togglePassword.addEventListener('click', () => {
+    const passwordInput = document.getElementById('password');
+    passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+    togglePassword.textContent = passwordInput.type === 'password' ? '👁️' : '🙈';
   });
 
-  // ===============================
-  // 🖼️ Vista previa imagen
-  // ===============================
-  foto.addEventListener("change", (event) => {
+  toggleConfirm.addEventListener('click', () => {
+    const confirmInput = document.getElementById('confirmPassword');
+    confirmInput.type = confirmInput.type === 'password' ? 'text' : 'password';
+    toggleConfirm.textContent = confirmInput.type === 'password' ? '👁️' : '🙈';
+  });
+
+  // Preview selected image
+  fotoInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
-    if (!file) return;
-
-    const maxSize = 10 * 1024 * 1024; // 10 MB
-    if (file.size > maxSize) {
-      showError(foto, "La foto no puede superar los 10 MB.");
-      foto.value = "";
-      imgPreview.style.display = "none";
-      return;
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imgPreview.src = e.target.result;
+        imgPreview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
     }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      imgPreview.src = e.target.result;
-      imgPreview.style.display = "block";
-    };
-    reader.readAsDataURL(file);
-    clearError(foto);
   });
 
-  // ===============================
-  // 💡 Validaciones
-  // ===============================
-  const validations = {
-    nombre: {
-      check: (val) => val.length >= 4 && val.length <= 20,
-      msg: "Debe tener entre 4 y 20 caracteres.",
-    },
-    correo: {
-      check: (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
-      msg: "Correo inválido (ejemplo@correo.com).",
-    },
-    password: {
-      check: (val) =>
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{10,}$/.test(val),
-      msg: "Debe tener 10+ caracteres, mayúsculas, minúsculas, número y símbolo.",
-    },
-  };
+  // Form submission
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-  function showError(input, message) {
-    const small = input.parentElement.querySelector(".error-text");
-    input.classList.add("invalid");
-    input.classList.remove("valid");
-    if (small) {
-      small.textContent = message;
-      small.style.display = "block";
-    }
-  }
+    // Clear previous error messages
+    document.querySelectorAll('.error-text').forEach((el) => (el.textContent = ''));
 
-  function clearError(input) {
-    const small = input.parentElement.querySelector(".error-text");
-    input.classList.add("valid");
-    input.classList.remove("invalid");
-    if (small) {
-      small.textContent = "";
-      small.style.display = "none";
-    }
-  }
+    const nombre = document.getElementById('nombre').value.trim();
+    const correo = document.getElementById('correo').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const foto = document.getElementById('foto').files[0];
 
-  // ===============================
-  // ✅ Enviar formulario a Supabase
-  // ===============================
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+    // Client-side validation
+    let hasError = false;
 
-    let valid = true;
-    [nombre, correo, password].forEach((input) => {
-      const val = input.value.trim();
-      const rule = validations[input.id];
-      if (!rule.check(val)) {
-        showError(input, rule.msg);
-        valid = false;
-      }
-    });
-
-    if (confirmPassword.value !== password.value) {
-      showError(confirmPassword, "Las contraseñas no coinciden.");
-      valid = false;
+    if (!nombre) {
+      setError('nombre', 'El nombre es obligatorio');
+      hasError = true;
     }
 
-    if (!foto.files.length) {
-      showError(foto, "Debes seleccionar una foto de perfil.");
-      valid = false;
+    if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      setError('correo', 'Ingresa un correo válido');
+      hasError = true;
     }
 
-    if (!valid) {
-      alert("❌ Corrige los errores antes de continuar.");
+    if (!password || password.length < 8) {
+      setError('password', 'La contraseña debe tener al menos 8 caracteres');
+      hasError = true;
+    }
+
+    if (password !== confirmPassword) {
+      setError('confirmPassword', 'Las contraseñas no coinciden');
+      hasError = true;
+    }
+
+    if (!foto) {
+      setError('foto', 'Selecciona una foto de perfil');
+      hasError = true;
+    }
+
+    if (hasError) {
+      console.error('Client-side validation failed', { nombre, correo, password: !!password, foto: !!foto });
       return;
     }
 
     try {
-      console.log("🚀 Registrando usuario en Supabase Auth...");
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('nombre', nombre);
+      formData.append('correo', correo);
+      formData.append('password', password); // Send password, not password_hash
+      formData.append('foto', foto);
+      console.log('FormData prepared:', { nombre, correo, password: '[hidden]', foto: foto.name });
 
-      // 1️⃣ Crear usuario en Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: correo.value.trim(),
-        password: password.value.trim(),
-        options: {
-          data: {
-            nombre: nombre.value.trim(),
-            rol: "cliente",
-          },
-        },
+      // Send to backend
+      console.log('Sending registration request to backend...');
+      const response = await fetch('http://localhost:3000/api/register', {
+        method: 'POST',
+        body: formData,
       });
 
-      if (error) throw new Error(error.message);
-      const user = data.user;
-      if (!user) throw new Error("No se obtuvo el usuario tras el registro.");
+      console.log('Registration response status:', response.status);
+      const result = await response.json();
+      console.log('Registration response body:', result);
 
-      console.log("✅ Usuario Auth creado:", user.id);
-
-      // 2️⃣ Subir foto (solo si hay sesión activa)
-      const file = foto.files[0];
-      const fileName = `${user.id}-${file.name}`;
-
-      const session = (await supabase.auth.getSession()).data.session;
-
-      if (!session) {
-        console.warn(
-          "⚠️ No hay sesión activa, se omitirá la subida de foto por RLS."
-        );
-        alert(
-          "📩 Registro exitoso. Revisa tu correo para confirmar tu cuenta antes de subir la foto."
-        );
-        return;
+      if (response.ok) {
+        alert('Registro exitoso. Por favor, inicia sesión.');
+        window.location.href = 'Login.html';
+      } else {
+        console.error('Registration failed:', result);
+        setError('form-registro', result.error || 'Error en el registro');
       }
-
-      const { error: uploadError } = await supabase.storage
-        .from("fotos-usuarios")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: true,
-          contentType: file.type,
-        });
-
-      if (uploadError) {
-        console.error("❌ Storage error:", uploadError);
-        throw new Error("Error al subir la foto: " + uploadError.message);
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("fotos-usuarios")
-        .getPublicUrl(fileName);
-
-      const fotoUrl = publicUrlData.publicUrl;
-
-      // 3️⃣ Actualizar metadata con URL
-      await supabase.auth.updateUser({
-        data: { foto_url: fotoUrl },
-      });
-
-      alert(
-        "✅ Registro y carga de foto exitosos. Revisa tu correo para confirmar tu cuenta."
-      );
-      form.reset();
-      imgPreview.style.display = "none";
     } catch (err) {
-      console.error("⛔ Error completo:", err);
-      alert("❌ Error al registrar usuario: " + err.message);
+      console.error('Frontend registration error:', {
+        error: err.message,
+        stack: err.stack,
+      });
+      setError('form-registro', `Error en el registro: ${err.message}`);
     }
   });
+
+  // Helper function to set error messages
+  function setError(fieldId, message) {
+    const field = fieldId === 'form-registro' ? document.getElementById(fieldId) : document.getElementById(fieldId).parentElement;
+    const errorText = field.querySelector('.error-text') || field.nextElementSibling;
+    errorText.textContent = message;
+  }
 });
