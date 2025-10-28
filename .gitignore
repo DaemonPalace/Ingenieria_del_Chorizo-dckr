@@ -138,7 +138,6 @@ minio/data/
 
 # Certs and secrets
 secrets/
-nginx/certs/
 
 # Docker
 docker-compose.override.yml
