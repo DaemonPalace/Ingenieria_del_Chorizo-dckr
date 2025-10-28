@@ -131,7 +131,15 @@ dist
 
 # Database
 db/data/
-init.sql
+
 
 # MinIO
 minio/data/
+
+# Certs and secrets
+secrets/
+nginx/certs/
+
+# Docker
+docker-compose.override.yml
+.docker/

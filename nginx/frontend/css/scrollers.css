@@ -1,0 +1,16 @@
+/* Custom Scrollbar */
+/* Ocultar el scrollbar en navegadores basados en WebKit */
+::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+}
+
+/* Ocultar el scrollbar en navegadores basados en Gecko (como Firefox) */
+html {
+    scrollbar-width: none; /* Desactivar el scrollbar */
+}
+
+/* Para otros elementos, también puedes hacer esto */
+element {
+    overflow: hidden; /* Oculta cualquier scrollbar y contenido desbordante */
+}

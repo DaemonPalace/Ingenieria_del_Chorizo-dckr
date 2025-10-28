@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro - ArepAbuelas</title>
+  <link rel="icon" href="../Imagenes/logoarepabuela.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Questrial&family=Anton&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/registro.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="../js/registro.js"></script>
+</head>
+<body>
+  <a href="../login.html" class="back-btn">Volver</a>
+
+  <div class="register-container">
+    <div class="register-header">
+      <img src="../img/logoarepabuela.png" alt="Logo Restaurante" class="logo">
+      <h1>Crear cuenta</h1>
+      <p>Únete a la familia ArepAbuelas</p>
+    </div>
+
+    <form id="form-registro" method="POST" enctype="multipart/form-data">
+      <div class="input-group">
+        <label for="nombre">Nombre:</label>
+        <input type="text" id="nombre" name="nombre" placeholder="Ingresa tu nombre completo" required>
+        <small class="error-text"></small>
+      </div>
+
+      <div class="input-group">
+        <label for="correo">Correo:</label>
+        <input type="email" id="correo" name="correo" placeholder="ejemplo@correo.com" required>
+        <small class="error-text"></small>
+      </div>
+
+      <div class="input-group password-group">
+        <label for="password">Contraseña:</label>
+        <div class="password-wrapper">
+          <input type="password" id="password" name="password" placeholder="Crea una contraseña segura" required>
+          <button type="button" class="toggle-password" id="togglePassword">👁️</button>
+        </div>
+        <small class="error-text"></small>
+      </div>
+
+      <div class="input-group password-group">
+        <label for="confirmPassword">Confirmar contraseña:</label>
+        <div class="password-wrapper">
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirma tu contraseña" required>
+          <button type="button" class="toggle-password" id="toggleConfirm">👁️</button>
+        </div>
+        <small class="error-text"></small>
+      </div>
+
+      <div class="input-group">
+        <label for="foto">Foto de perfil:</label>
+        <label class="file-label" for="foto">📷 Seleccionar foto</label>
+        <input type="file" id="foto" name="foto" accept="image/*" hidden required>
+        <small class="error-text"></small>
+      </div>
+
+      <div id="preview-container">
+        <img id="img-preview" class="img-preview" src="" alt="">
+      </div>
+
+      <button type="submit" class="register-btn">Registrarse</button>
+    </form>
+
+    <div class="login-link">
+      <p>¿Ya tienes cuenta?
+        <a href="../login.html">Inicia sesión aquí</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,139 @@
+/* Estilo general */
+body {
+  font-family: 'Anton', sans-serif, 'Questrial', sans-serif;
+  background-color: #f9f3e3;
+}
+
+/* Sidebar */
+.sidebar {
+  font-family: 'Great Vibes';
+  height: 100vh;
+  position: fixed;
+  width: 250px;
+  background-color: #3C2E26;
+  color: #fff;
+}
+
+.logo-sidebar {
+  width: 150px;
+  height: auto;
+  display: block;
+  margin: auto;
+  padding: 10px 0;
+}
+
+/* Links de la sidebar */
+.nav-link {
+  font-size: 18px;
+  padding: 10px;
+  color: #d4a373;
+  border-radius: 5px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background-color: #d4a373;
+  color: #3C2E26;
+}
+
+/* Contenido principal */
+.content {
+  margin-left: 250px;
+  padding: 20px;
+  background-color: #f9f3e3;
+}
+
+/* Tablas */
+.table-responsive {
+  margin-top: 20px;
+}
+
+.table {
+  border: 1px solid #d4a373;
+}
+
+.table thead {
+  background-color: #3C2E26;
+  color: #fff;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: #f3e8d2;
+}
+
+.table-striped tbody tr:hover {
+  background-color: #d4a373;
+  color: #3C2E26;
+}
+
+/* Botones */
+.btn-success {
+  background-color: #3C2E26;
+  color: #fff;
+  border: none;
+}
+
+.btn-success:hover {
+  background-color: #d4a373;
+  color: #3C2E26;
+}
+
+.btn-warning {
+  background-color: #d4a373;
+  color: #3C2E26;
+  border: none;
+}
+
+.btn-warning:hover {
+  background-color: #3C2E26;
+  color: #fff;
+}
+
+.btn-danger {
+  background-color: #C0392B;
+  color: #fff;
+  border: none;
+}
+
+.btn-danger:hover {
+  background-color: #E74C3C;
+  color: #fff;
+}
+
+/* Botón logout */
+#logoutBtn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 20px;
+  background-color: #3C2E26;
+  color: #d4a373;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+#logoutBtn:hover {
+  background-color: #d4a373;
+  color: #fff;
+}
+
+/* Imagen dentro de tabla de productos */
+#tablaProductos img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #d4a373;
+}
+
+/* Vista previa antes de guardar */
+#previewImagen {
+  margin-top: 10px;
+  border: 2px dashed #d4a373;
+  border-radius: 10px;
+  padding: 5px;
+  background-color: #fdf9f3;
+}

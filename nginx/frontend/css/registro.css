@@ -1,0 +1,233 @@
+/* =========================================
+   🎨 ESTILO GENERAL
+========================================= */
+body {
+  font-family: 'Questrial', sans-serif;
+  background-color: #f9f3e3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+/* =========================================
+   🔙 BOTÓN VOLVER
+========================================= */
+.back-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  background-color: #3C2E26;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background-color 0.3s;
+}
+.back-btn:hover {
+  background-color: #2a211b;
+}
+
+/* =========================================
+   📦 CONTENEDOR PRINCIPAL
+========================================= */
+.register-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 440px;
+  padding: 45px 30px;
+  background-color: #fff;
+  border: 2px solid #d4a373;
+  border-radius: 15px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+/* =========================================
+   👩‍🍳 ENCABEZADO
+========================================= */
+.register-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+.logo {
+  width: 100px;
+  height: auto;
+  margin-bottom: 8px;
+}
+.register-header h1 {
+  font-family: 'Great Vibes', cursive;
+  color: #3C2E26;
+  font-size: 32px;
+  margin: 0;
+}
+.register-header p {
+  color: #555;
+  font-size: 14px;
+  margin-top: 3px;
+}
+
+/* =========================================
+   🧩 CAMPOS DEL FORMULARIO
+========================================= */
+.input-group {
+  width: 100%;
+  margin-bottom: 18px;
+}
+.input-group label {
+  display: block;
+  font-weight: bold;
+  color: #3C2E26;
+  margin-bottom: 6px;
+}
+.input-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1.5px solid #d4a373;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.input-group input:focus {
+  border-color: #b97b33;
+  box-shadow: 0 0 6px rgba(185,123,51,0.3);
+}
+
+/* =========================================
+   👁️ MOSTRAR / OCULTAR CONTRASEÑA
+========================================= */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.password-wrapper input {
+  width: 100%;
+  padding-right: 35px;
+}
+.toggle-password {
+  position: absolute;
+  right: -35px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #3C2E26;
+  transition: color 0.3s, transform 0.2s;
+}
+.toggle-password:hover {
+  color: #d47f29;
+  transform: scale(1.1);
+}
+
+/* =========================================
+   📷 BOTÓN PERSONALIZADO ARCHIVO
+   — sin fondo, con margen y centrado
+========================================= */
+.file-label {
+  display: block;
+  width: 80%;
+  margin: 10px auto 15px auto; /* 👈 espaciado arriba y abajo */
+  background: none; /* sin fondo */
+  color: #3C2E26;
+  text-align: center;
+  padding: 10px 16px;
+  border: 1.5px solid #d4a373;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.file-label:hover {
+  background-color: #fff8e7;
+  color: #2a211b;
+  transform: scale(1.02);
+}
+.file-label:active {
+  transform: scale(0.97);
+}
+
+/* =========================================
+   🖼️ VISTA PREVIA DE IMAGEN
+========================================= */
+#preview-container {
+  text-align: center;
+  margin-top: 15px;
+}
+.img-preview {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid #d4a373;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  display: none;
+  margin: 20px auto 0 auto;
+}
+
+/* =========================================
+   🧈 BOTÓN REGISTRO
+========================================= */
+.register-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #3C2E26;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+.register-btn:hover {
+  background-color: #2a211b;
+  transform: scale(1.02);
+}
+.register-btn:active {
+  transform: scale(0.98);
+}
+
+/* =========================================
+   🔗 ENLACE LOGIN
+========================================= */
+.login-link {
+  margin-top: 18px;
+  font-size: 14px;
+  text-align: center;
+}
+.login-link a {
+  color: #d47f29;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.3s;
+}
+.login-link a:hover {
+  color: #3C2E26;
+  text-decoration: underline;
+}
+
+/* =========================================
+   ⚠️ ERRORES Y VALIDACIÓN
+========================================= */
+.error-text {
+  font-size: 13px;
+  color: #dc3545;
+  display: none;
+  margin-top: 3px;
+}
+input.valid {
+  border: 2px solid #28a745;
+  box-shadow: 0 0 5px rgba(40,167,69,0.3);
+}
+input.invalid {
+  border: 2px solid #dc3545;
+  box-shadow: 0 0 5px rgba(220,53,69,0.3);
+}

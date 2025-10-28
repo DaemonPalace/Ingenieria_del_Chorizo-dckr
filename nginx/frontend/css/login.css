@@ -1,0 +1,200 @@
+/* ================================
+   🎨 Estilo general del cuerpo
+================================ */
+body {
+    font-family: 'Questrial', sans-serif;
+    background-color: #f9f3e3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ================================
+   ✨ Animaciones
+================================ */
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes zoomIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pressEffect {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(0.95);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ================================
+   🔙 Botón pequeño para volver al Home
+================================ */
+.back-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 5px 10px;
+    font-size: 12px;
+    background-color: #3C2E26;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    animation: fadeInUp 1s 0.5s ease-out backwards;
+}
+
+.back-btn:hover {
+    background-color: #2a211b;
+}
+
+.back-btn:active {
+    animation: pressEffect 0.2s ease;
+}
+
+/* ================================
+   📦 Contenedor principal del login
+================================ */
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+    padding: 40px 20px;
+    background-color: #fff;
+    border: 2px solid #d4a373;
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    min-height: 400px;
+    animation: fadeInUp 1s ease-out;
+}
+
+/* ================================
+   🧁 Encabezado del login
+================================ */
+.login-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.logo {
+    width: 100px;
+    height: auto;
+    margin-bottom: 10px;
+    animation: zoomIn 1s ease-in-out;
+}
+
+.login-header h1 {
+    font-family: 'Great Vibes', cursive;
+    color: #3C2E26;
+    font-size: 28px;
+    margin: 0;
+}
+
+.login-header p {
+    color: #555;
+    font-size: 14px;
+    margin: 5px 0;
+}
+
+/* ================================
+   🧾 Campos del formulario
+================================ */
+.input-group {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #d4a373;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+/* ================================
+   🔐 Botón de ingresar
+================================ */
+.login-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #3C2E26;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    animation: pressEffect 0.3s ease;
+}
+
+.login-btn:hover {
+    background-color: #2a211b;
+}
+
+.login-btn:active {
+    animation: pressEffect 0.2s ease;
+}
+
+/* ================================
+   🧍‍♀️ Sección de registro nuevo usuario
+================================ */
+.register-link {
+    text-align: center;
+    margin-top: 15px;
+    font-family: 'Questrial', sans-serif;
+    font-size: 14px;
+    color: #333;
+    animation: fadeInUp 1s ease-out;
+}
+
+.register-link a {
+    color: #d47f29;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s, transform 0.2s;
+}
+
+.register-link a:hover {
+    color: #3C2E26;
+    text-decoration: underline;
+    transform: scale(1.05);
+}

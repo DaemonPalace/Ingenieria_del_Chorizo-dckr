@@ -1,0 +1,193 @@
+body {
+    font-family: 'Anton', sans-serif, 'Questrial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #fff;
+}
+
+/* Estilos del Header */
+header {
+    background-color: #3C2E26; /* Color de fondo */
+    padding: 20px 40px; /* Espaciado interno */
+    display: flex;
+    justify-content: space-between; /* Distribuye los elementos en los extremos */
+    align-items: center; /* Centra verticalmente los elementos */
+}
+
+header h1 {
+    font-family: 'Great Vibes'; /* Estilo de la fuente */
+    color: #FFF8E7; /* Color de la letra */
+    margin: 0; /* Sin márgenes */
+    transition: transform 0.3s ease; /* Transición suave para el efecto de agrandamiento */
+}
+
+header h1 a {
+    color: inherit; /* Hereda el color de h1 */
+    text-decoration: none; /* Sin subrayado */
+    display: inline-block; /* Para que el transform funcione correctamente */
+}
+
+header h1 a:hover {
+    transform: scale(1.1); /* Aumenta ligeramente el tamaño del texto */
+}
+
+
+
+
+header a {
+    text-decoration: none; /* Quita subrayado de los enlaces */
+}
+
+header img {
+    height: 30px; /* Tamaño de las imágenes */
+    transition: transform 0.3s ease, opacity 0.3s ease; /* Transición suave */
+}
+
+header img:hover {
+    transform: scale(1.1); /* Aumenta ligeramente el tamaño de la imagen */
+    opacity: 0.8; /* Disminuye la opacidad */
+}
+
+/* Estilos del Dropdown Menu */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropbtn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #3C2E26;
+    min-width: 300px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    border-radius: 5px;
+}
+
+.dropdown-content a {
+    color: #FFF8E7;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-family: 'Questrial', sans-serif;
+}
+
+.dropdown-content a:hover {
+    background-color: #534741;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+
+.footer {
+    background-color: #3C2E26;
+    color: #EDE1B7;
+    padding: 10px 230px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.footer-left, .footer-right {
+    display: flex;
+    align-items: center;
+}
+
+.footer-address {
+    margin-left: 50px; /* Mueve el texto un poco más a la izquierda */
+    padding-left: 20px; /* Añade más espacio (aire) a la izquierda del texto */
+    font-family: 'Questrial', sans-serif;
+    color: #EDE1B7;
+}
+
+.footer-address p {
+    margin: 10px 0; /* Añade más espacio vertical entre las líneas */
+}
+
+.footer-address p strong {
+    color: #D69E32; /* Color dorado para "Dirección" y "Teléfono" */
+}
+
+.footer-right {
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Estilos para el botón Conócenos */
+.footer-right h2 {
+    margin: 0;
+    color: #EDE1B7;
+    font-family: 'Questrial', sans-serif;
+    font-size: 24px;
+    border-bottom: 4px solid #EDE1B7;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: color 0.3s, border-color 0.3s;
+    width: 300px;
+    text-align: center;
+}
+
+.footer-right h2:hover {
+    color: #D69E32;
+    border-color: #D69E32;
+}
+
+.footer-right h2 a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Estilos para la imagen de redes sociales */
+.footer-social {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-left: -10px; /* Mueve las imágenes un poco a la izquierda */
+}
+
+.footer-social img {
+    width: 100%;
+    max-width: 150px;
+    height: auto;
+}
+
+.logo img {
+    height: 100px; /* Aumenta un poco la altura del logo */
+    width: auto;
+    margin-left: 4.5rem;
+}
+
+/* Ocultar texto cuando el ancho de la pantalla es menor a 1000px */
+@media (max-width: 1000px) {
+    .footer-address, 
+    .footer-right h2 {
+        display: none;
+    }
+}
+
+/* Mantener el logo centrado cuando el ancho de la pantalla es menor a 600px */
+@media (max-width: 600px) {
+    header {
+        justify-content: center;
+    }
+    
+    header img {
+        margin-left: 0; /* Asegura que no haya margen a la izquierda */
+    }
+}
