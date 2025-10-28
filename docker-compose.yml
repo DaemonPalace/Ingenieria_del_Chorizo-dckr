@@ -26,7 +26,7 @@ services:
     environment:
       - DB_HOST=db
       - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_PASS=${POSTGRES_PASSWORD}
       - STORAGE_URL=${STORAGE_URL}
       - MINIO_HOST=${MINIO_HOST}
       - MINIO_PORT=${MINIO_PORT}
