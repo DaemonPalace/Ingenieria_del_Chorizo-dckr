@@ -1,0 +1,116 @@
+/* ===============================
+   🎨 ESTILO GENERAL
+=============================== */
+body {
+  font-family: "Questrial", sans-serif;
+  background-color: #f9f3e3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+/* ===============================
+   📦 TARJETA
+=============================== */
+.no-approved-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.no-approved-card {
+  background-color: #fff;
+  border: 2px solid #d4a373;
+  border-radius: 15px;
+  padding: 40px 30px;
+  text-align: center;
+  width: 90%;
+  max-width: 460px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(15px);
+  animation: slideUp 0.8s ease-out forwards;
+}
+
+/* ===============================
+   👩‍🍳 ENCABEZADO
+=============================== */
+.logo {
+  width: 90px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-family: "Great Vibes", cursive;
+  font-size: 30px;
+  color: #3c2e26;
+  margin-bottom: 12px;
+}
+
+p {
+  color: #444;
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 25px;
+}
+
+/* ===============================
+   🔙 BOTÓN
+=============================== */
+.back-btn {
+  display: inline-block;
+  background-color: #3c2e26;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #2a211b;
+  transform: scale(1.05);
+}
+
+/* ===============================
+   ✨ ANIMACIONES
+=============================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-in {
+  opacity: 0;
+  animation: fadeIn 1s ease-in forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
