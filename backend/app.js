@@ -6,15 +6,15 @@ const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
-
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = 3000;
 
 // Configure CORS
 app.use(cors({
   origin: ['https://localhost', 'https://localhost:8080'], // Allow multiple origins for development
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Configure PostgreSQL
@@ -22,7 +22,7 @@ const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: 'arepabuelasdb',
-  password: process.env.DB_PASS,
+  password: fs.readFileSync(process.env.DB_PASS_FILE, 'utf8').trim(),
   port: 5432,
 });
 
@@ -54,6 +54,37 @@ const upload = multer({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'c3VwZXJhZG1pbkBhcmVwYWJ1ZWxhcy5jb206MTc2MTc3MzA1MjAyNDowLjI2NzQyNTEwNDYyNDc2Nzc2'; // Use env var in production
+
+// Authentication middleware
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Token inválido' });
+    req.user = user;
+    next();
+  });
+}
+
+// Admin middleware (admin or superadmin)
+function isAdmin(req, res, next) {
+  if (!['admin', 'superadmin'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Acceso denegado: Requiere rol de admin o superadmin' });
+  }
+  next();
+}
+
+// Superadmin middleware
+function isSuperAdmin(req, res, next) {
+  if (req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Acceso denegado: Requiere rol de superadmin' });
+  }
+  next();
+}
+
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', {
@@ -69,46 +100,50 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Ensure the MinIO bucket exists
-async function ensureBucket() {
-  const bucketName = 'arepabuelas-users';
+// Ensure the MinIO buckets exist
+async function ensureBuckets() {
+  const userBucket = 'arepabuelas-users';
+  const productBucket = 'arepabuelas-products';
+  const policy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: '*',
+        Action: ['s3:GetObject'],
+        Resource: ['arn:aws:s3:::${bucketName}/*'],
+      },
+    ],
+  };
+
   try {
-    console.log(`Checking if bucket ${bucketName} exists...`);
-    const bucketExists = await minioClient.bucketExists(bucketName);
-    if (!bucketExists) {
-      console.log(`Creating bucket ${bucketName}...`);
-      await minioClient.makeBucket(bucketName, 'us-east-1');
-      console.log(`Bucket ${bucketName} created successfully`);
-    } else {
-      console.log(`Bucket ${bucketName} already exists`);
+    for (const bucketName of [userBucket, productBucket]) {
+      console.log(`Checking if bucket ${bucketName} exists...`);
+      const bucketExists = await minioClient.bucketExists(bucketName);
+      if (!bucketExists) {
+        console.log(`Creating bucket ${bucketName}...`);
+        await minioClient.makeBucket(bucketName, 'us-east-1');
+        console.log(`Bucket ${bucketName} created successfully`);
+      } else {
+        console.log(`Bucket ${bucketName} already exists`);
+      }
+      console.log(`Setting bucket policy for ${bucketName}...`);
+      await minioClient.setBucketPolicy(bucketName, JSON.stringify(policy).replace('${bucketName}', bucketName));
+      console.log(`Bucket policy set for ${bucketName}`);
     }
-    const policy = {
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Effect: 'Allow',
-          Principal: '*',
-          Action: ['s3:GetObject'],
-          Resource: [`arn:aws:s3:::${bucketName}/*`],
-        },
-      ],
-    };
-    console.log(`Setting bucket policy for ${bucketName}...`);
-    await minioClient.setBucketPolicy(bucketName, JSON.stringify(policy));
-    console.log(`Bucket policy set for ${bucketName}`);
   } catch (err) {
-    console.error('Error in ensureBucket:', {
+    console.error('Error in ensureBuckets:', {
       error: err.message,
       code: err.code,
       stack: err.stack,
     });
-    throw new Error(`Failed to set up MinIO bucket: ${err.message}`);
+    throw new Error(`Failed to set up MinIO buckets: ${err.message}`);
   }
 }
 
-// Initialize bucket on startup
-ensureBucket().catch((err) => {
-  console.error('Failed to initialize MinIO bucket:', err);
+// Initialize buckets on startup
+ensureBuckets().catch((err) => {
+  console.error('Failed to initialize MinIO buckets:', err);
   process.exit(1);
 });
 
@@ -134,23 +169,18 @@ app.get('/api/minio-test', async (req, res, next) => {
     console.log('Testing MinIO connection...');
     const buckets = await minioClient.listBuckets();
     console.log('Buckets listed:', buckets.map(b => b.name));
-
     const bucketName = 'arepabuelas-users';
     const bucketExists = await minioClient.bucketExists(bucketName);
     console.log(`Bucket ${bucketName} exists: ${bucketExists}`);
-
     const testObjectName = `test_${Date.now()}.txt`;
     await minioClient.putObject(bucketName, testObjectName, Buffer.from('Test content'), {
       'Content-Type': 'text/plain',
     });
     console.log(`Test object ${testObjectName} uploaded to ${bucketName}`);
-
     const testObjectUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/${bucketName}/${testObjectName}`;
     console.log(`Test object URL: ${testObjectUrl}`);
-
     await minioClient.removeObject(bucketName, testObjectName);
     console.log(`Test object ${testObjectName} removed`);
-
     res.status(200).json({
       message: 'MinIO connection successful',
       buckets: buckets.map(b => b.name),
@@ -167,49 +197,41 @@ app.get('/api/minio-test', async (req, res, next) => {
   }
 });
 
-// Register endpoint
+// Register endpoint (for clientes)
 app.post('/api/register', upload.single('foto'), async (req, res, next) => {
   console.log('Received /api/register request:', {
     body: req.body,
     file: req.file ? { originalname: req.file.originalname, size: req.file.size } : 'No file',
   });
-
   try {
     const { nombre, correo, password } = req.body;
     const foto = req.file;
-
     const missingFields = [];
     if (!nombre) missingFields.push('nombre');
     if (!correo) missingFields.push('correo');
     if (!password) missingFields.push('password');
     if (!foto) missingFields.push('foto');
-
     if (missingFields.length > 0) {
       console.error('Validation failed: Missing required fields', { missingFields });
       return res.status(400).json({ error: `Faltan los siguientes campos: ${missingFields.join(', ')}` });
     }
-
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
       console.error('Validation failed: Invalid email', { correo });
       return res.status(400).json({ error: 'Correo inválido' });
     }
-
     console.log('Checking for existing email:', correo);
     const emailCheck = await pool.query('SELECT id_usuario FROM Usuario WHERE correo = $1', [correo]);
     if (emailCheck.rows.length > 0) {
       console.error('Email already exists:', correo);
       return res.status(400).json({ error: 'El correo ya está registrado' });
     }
-
     console.log('Hashing password...');
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
     console.log('Password hashed successfully');
-
     const fileExtension = path.extname(foto.originalname).toLowerCase();
     const fileName = `profile_${Date.now()}_${Math.random().toString(36).substring(2, 15)}${fileExtension}`;
     console.log('Generated filename for upload:', fileName);
-
     console.log('Uploading photo to MinIO:', { bucket: 'arepabuelas-users', fileName });
     try {
       await minioClient.putObject('arepabuelas-users', fileName, foto.buffer, {
@@ -224,10 +246,8 @@ app.post('/api/register', upload.single('foto'), async (req, res, next) => {
       });
       throw new Error(`Failed to upload photo to MinIO: ${err.message}`);
     }
-
     const fotoUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-users/${fileName}`;
     console.log('Generated photo URL:', fotoUrl);
-
     console.log('Inserting user into database:', { nombre, correo, password_hash, fotoUrl });
     const query = `
       INSERT INTO Usuario (nombre, correo, password_hash, foto_url, rol, aprobado, fecha_registro)
@@ -237,7 +257,6 @@ app.post('/api/register', upload.single('foto'), async (req, res, next) => {
     const values = [nombre, correo, password_hash, fotoUrl];
     const result = await pool.query(query, values);
     console.log('User registered successfully:', { id_usuario: result.rows[0].id_usuario });
-
     res.status(201).json({ message: 'Usuario registrado exitosamente' });
   } catch (err) {
     console.error('Registration error:', {
@@ -253,25 +272,20 @@ app.post('/api/register', upload.single('foto'), async (req, res, next) => {
 // Login endpoint
 app.post('/api/login', async (req, res, next) => {
   console.log('Received /api/login request:', { body: req.body });
-
   try {
     const { correo, password } = req.body;
-
     // Validate inputs
     const missingFields = [];
     if (!correo) missingFields.push('correo');
     if (!password) missingFields.push('password');
-
     if (missingFields.length > 0) {
       console.error('Validation failed: Missing required fields', { missingFields });
       return res.status(400).json({ error: `Faltan los siguientes campos: ${missingFields.join(', ')}` });
     }
-
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
       console.error('Validation failed: Invalid email', { correo });
       return res.status(400).json({ error: 'Correo inválido' });
     }
-
     // Check if user exists
     console.log('Checking user credentials:', { correo });
     const userQuery = await pool.query('SELECT id_usuario, nombre, correo, password_hash, rol, aprobado FROM Usuario WHERE correo = $1', [correo]);
@@ -279,15 +293,12 @@ app.post('/api/login', async (req, res, next) => {
       console.error('User not found:', { correo });
       return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
     }
-
     const user = userQuery.rows[0];
-
     // Check if user is approved
     if (!user.aprobado) {
       console.error('User not approved:', { correo });
       return res.status(403).json({ error: 'Cuenta no aprobada. Contacta al administrador.' });
     }
-
     // Verify password
     console.log('Verifying password for user:', { correo });
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
@@ -295,7 +306,8 @@ app.post('/api/login', async (req, res, next) => {
       console.error('Invalid password:', { correo });
       return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
     }
-
+    // Generate JWT
+    const token = jwt.sign({ id: user.id_usuario, role: user.rol }, JWT_SECRET, { expiresIn: '1h' });
     console.log('Login successful:', { id_usuario: user.id_usuario, correo, rol: user.rol });
     res.status(200).json({
       message: 'Inicio de sesión exitoso',
@@ -305,6 +317,7 @@ app.post('/api/login', async (req, res, next) => {
         correo: user.correo,
         rol: user.rol,
       },
+      token,
     });
   } catch (err) {
     console.error('Login error:', {
@@ -312,6 +325,224 @@ app.post('/api/login', async (req, res, next) => {
       stack: err.stack,
       body: req.body,
     });
+    next(err);
+  }
+});
+
+// Users CRUD (for admin panel)
+
+// GET /api/users - List all users
+app.get('/api/users', authenticateToken, isAdmin, async (req, res, next) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id_usuario, 
+        nombre, 
+        correo, 
+        rol::TEXT as rol, 
+        aprobado, 
+        fecha_registro, 
+        foto_url 
+      FROM Usuario
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/users/:id/approve - Approve a user
+app.put('/api/users/:id/approve', authenticateToken, isAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      UPDATE Usuario 
+      SET aprobado = TRUE, aprobado_por = $2
+      WHERE id_usuario = $1 
+      RETURNING 
+        id_usuario, nombre, correo, rol::TEXT as rol, aprobado, aprobado_por, fecha_registro, foto_url
+    `, [id, req.user.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json({ message: 'Usuario aprobado exitosamente', user: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/users/:id - Delete a user
+app.delete('/api/users/:id', authenticateToken, isAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const requesterId = req.user.id;           // <-- JWT payload contains the logged-in user id
+
+    // ---- 1. Prevent self-deletion (any role) ----
+    if (parseInt(id) === requesterId) {
+      return res.status(403).json({ 
+        error: 'No puedes eliminar tu propia cuenta' 
+      });
+    }
+
+    // ---- 2. Get target user ----
+    const targetQuery = await pool.query(
+      'SELECT rol, foto_url FROM Usuario WHERE id_usuario = $1', 
+      [id]
+    );
+    if (targetQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const { rol: targetRole, foto_url } = targetQuery.rows[0];
+
+    // ---- 3. Only superadmin can delete another admin ----
+    if (targetRole === 'admin' && req.user.role !== 'superadmin') {
+      return res.status(403).json({ 
+        error: 'Solo superadmin puede eliminar admins' 
+      });
+    }
+
+    // ---- 4. Prevent deletion of ANY superadmin (even by another superadmin) ----
+    if (targetRole === 'superadmin') {
+      return res.status(403).json({ 
+        error: 'No se permite eliminar cuentas de superadmin' 
+      });
+    }
+
+    // ---- 5. Delete photo from MinIO (if exists) ----
+    if (foto_url) {
+      const bucket = 'arepabuelas-users';
+      const objectName = foto_url.split('/').pop();
+      try {
+        await minioClient.removeObject(bucket, objectName);
+        console.log(`Foto eliminada de MinIO: ${objectName}`);
+      } catch (minioErr) {
+        console.error('Error al eliminar foto de MinIO:', minioErr);
+        // Continue – DB deletion is more important
+      }
+    }
+
+    // ---- 6. Delete from DB ----
+    await pool.query('DELETE FROM Usuario WHERE id_usuario = $1', [id]);
+
+    res.json({ message: 'Usuario eliminado exitosamente' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Products CRUD
+
+// POST /api/products - Create product
+app.post('/api/products', authenticateToken, isAdmin, upload.single('imagen'), async (req, res, next) => {
+  try {
+    const { nombre, precio, descripcion } = req.body;
+    const imagen = req.file;
+    const missingFields = [];
+    if (!nombre) missingFields.push('nombre');
+    if (!precio) missingFields.push('precio');
+    if (!descripcion) missingFields.push('descripcion');
+    if (!imagen) missingFields.push('imagen');
+    if (missingFields.length > 0) {
+      return res.status(400).json({ error: `Faltan los siguientes campos: ${missingFields.join(', ')}` });
+    }
+    const fileExtension = path.extname(imagen.originalname).toLowerCase();
+    const fileName = `product_${Date.now()}_${Math.random().toString(36).substring(2, 15)}${fileExtension}`;
+    // Upload to MinIO
+    await minioClient.putObject('arepabuelas-products', fileName, imagen.buffer, {
+      'Content-Type': imagen.mimetype,
+    });
+    const imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
+    // Insert into DB (assuming Producto table: id_producto, nombre, precio, descripcion, imagen_url)
+    const query = `
+      INSERT INTO Producto (nombre, precio, descripcion, imagen_url)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id_producto
+    `;
+    const values = [nombre, parseFloat(precio), descripcion, imagenUrl];
+    const result = await pool.query(query, values);
+    res.status(201).json({ message: 'Producto creado exitosamente', id_producto: result.rows[0].id_producto });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/products - List all products
+app.get('/api/products', authenticateToken, isAdmin, async (req, res, next) => {
+  try {
+    const result = await pool.query('SELECT * FROM Producto');
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/products/:id - Update product
+app.put('/api/products/:id', authenticateToken, isAdmin, upload.single('imagen'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { nombre, precio, descripcion } = req.body;
+    const imagen = req.file;
+    // Get current product
+    const currentQuery = await pool.query('SELECT imagen_url FROM Producto WHERE id_producto = $1', [id]);
+    if (currentQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    let imagenUrl = currentQuery.rows[0].imagen_url;
+    if (imagen) {
+      // Delete old image
+      const oldObjectName = imagenUrl.split('/').pop();
+      try {
+        await minioClient.removeObject('arepabuelas-products', oldObjectName);
+      } catch (minioErr) {
+        console.error('Error al eliminar imagen antigua:', minioErr);
+      }
+      // Upload new
+      const fileExtension = path.extname(imagen.originalname).toLowerCase();
+      const fileName = `product_${Date.now()}_${Math.random().toString(36).substring(2, 15)}${fileExtension}`;
+      await minioClient.putObject('arepabuelas-products', fileName, imagen.buffer, {
+        'Content-Type': imagen.mimetype,
+      });
+      imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
+    }
+    // Update DB
+    const query = `
+      UPDATE Producto
+      SET nombre = $1, precio = $2, descripcion = $3, imagen_url = $4
+      WHERE id_producto = $5
+      RETURNING *
+    `;
+    const values = [nombre || null, precio ? parseFloat(precio) : null, descripcion || null, imagenUrl, id];
+    const result = await pool.query(query, values);
+    res.json({ message: 'Producto actualizado exitosamente', product: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/products/:id - Delete product
+app.delete('/api/products/:id', authenticateToken, isAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    // Get imagen_url
+    const query = await pool.query('SELECT imagen_url FROM Producto WHERE id_producto = $1', [id]);
+    if (query.rows.length === 0) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    const imagenUrl = query.rows[0].imagen_url;
+    // Delete from MinIO
+    if (imagenUrl) {
+      const objectName = imagenUrl.split('/').pop();
+      try {
+        await minioClient.removeObject('arepabuelas-products', objectName);
+        console.log(`Imagen eliminada de MinIO: ${objectName}`);
+      } catch (minioErr) {
+        console.error('Error al eliminar imagen de MinIO:', minioErr);
+      }
+    }
+    // Delete from DB
+    await pool.query('DELETE FROM Producto WHERE id_producto = $1', [id]);
+    res.json({ message: 'Producto eliminado exitosamente' });
+  } catch (err) {
     next(err);
   }
 });
