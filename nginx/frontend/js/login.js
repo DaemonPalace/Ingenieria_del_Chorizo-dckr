@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // ✅ Login exitoso
       if (response.ok && result.user) {
         console.log("✅ Usuario autenticado:", result.user);
-        if (result.user.rol === "admin") {
+        if (result.user.rol === "admin" || "superadmin") {
           window.location.assign("/admin.html");
         } else {
           window.location.assign("/dashboard.html");

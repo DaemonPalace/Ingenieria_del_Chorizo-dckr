@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) throw new Error(json.error || "Error en el registro");
 
       alert("✅ Registro exitoso. Inicia sesión.");
-      window.location.href = "Login.html";
+      window.location.href = "login.html";
     } catch (e) {
       console.error(e);
       alert("❌ Error: " + e.message);
