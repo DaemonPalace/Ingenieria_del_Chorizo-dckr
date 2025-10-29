@@ -8,8 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-
-    // Limpiar errores anteriores
     document
       .querySelectorAll(".error-text")
       .forEach((el) => (el.textContent = ""));
@@ -29,25 +27,26 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hasError) return;
 
     try {
-      console.log("➡️ Enviando solicitud de login:", {
-        correo,
-        password: "[hidden]",
-      });
-
       const response = await fetch("http://localhost:3000/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo, password }),
       });
 
-      console.log("📡 Estado de respuesta:", response.status);
       const result = await response.json().catch(() => ({}));
       console.log("📩 Respuesta del backend:", result);
 
       // ✅ Login exitoso
       if (response.ok && result.user) {
-        console.log("✅ Usuario autenticado:", result.user);
-        if (result.user.rol === "admin" || "superadmin") {
+        const token = btoa(`${correo}:${Date.now()}:${Math.random()}`);
+        const expiration = Date.now() + 20 * 60 * 1000; // 20 minutos
+
+        sessionStorage.setItem("authToken", token);
+        sessionStorage.setItem("tokenExpiresAt", expiration);
+        sessionStorage.setItem("userRole", result.user.rol);
+        sessionStorage.setItem("userEmail", result.user.correo);
+
+        if (["admin", "superadmin"].includes(result.user.rol)) {
           window.location.assign("/admin.html");
         } else {
           window.location.assign("/dashboard.html");
@@ -55,25 +54,19 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 🚫 Usuario no aprobado (403 o flag explícita)
-      const notApproved =
+      // 🚫 Usuario no aprobado
+      if (
         response.status === 403 ||
         result.approved === false ||
-        (result.user && result.user.approved === false);
-
-      if (notApproved) {
-        console.warn(
-          "🚫 Cuenta no aprobada — generando token de acceso temporal..."
-        );
-        // Guardar un token temporal en sessionStorage
-        const token = btoa(`${correo}:${Date.now()}`); // cifrado base64 simple
-        sessionStorage.setItem("noApprovedToken", token);
+        (result.user && result.user.approved === false)
+      ) {
+        const tempToken = btoa(`${correo}:${Date.now()}`);
+        sessionStorage.setItem("noApprovedToken", tempToken);
         window.location.assign("/NoApproved.html");
         return;
       }
 
       // ❌ Otro error
-      console.error("❌ Error en login:", result);
       setError("form-login", result.error || "Error en el inicio de sesión");
     } catch (err) {
       console.error("🔥 Error en el frontend:", err);
