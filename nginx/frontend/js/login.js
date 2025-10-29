@@ -9,14 +9,15 @@ document.addEventListener("DOMContentLoaded", () => {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    // Limpiar errores anteriores
     document
       .querySelectorAll(".error-text")
       .forEach((el) => (el.textContent = ""));
 
     const correo = document.getElementById("correo").value.trim();
     const password = document.getElementById("password").value;
-
     let hasError = false;
+
     if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
       setError("correo", "Ingresa un correo válido");
       hasError = true;
@@ -28,61 +29,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hasError) return;
 
     try {
-      const payload = { correo, password };
-      console.log("➡️ Login payload:", { correo, password: "[hidden]" });
-
-      const resp = await fetch("http://localhost:3000/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      console.log("➡️ Enviando solicitud de login:", {
+        correo,
+        password: "[hidden]",
       });
 
-      console.log("📡 HTTP status:", resp.status);
+      const response = await fetch("http://localhost:3000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correo, password }),
+      });
 
-      // Intenta parsear JSON, pero tolera respuestas vacías
-      let data = null;
-      try {
-        data = await resp.json();
-      } catch {
-        data = {};
-      }
+      console.log("📡 Estado de respuesta:", response.status);
+      const result = await response.json().catch(() => ({}));
+      console.log("📩 Respuesta del backend:", result);
 
-      console.log("📩 Backend data:", data);
-
-      // ------- REGLAS DE NO APROBADO (robustas) -------
-      const text = (data?.error || data?.message || data?.detail || "")
-        .toString()
-        .toLowerCase();
-
-      const notApprovedByText = text.includes("no ha sido aprob");
-      const notApprovedFlag = data?.user?.aprobado === false;
-      const noUserButOK = resp.ok && !data?.user; // 200 sin user = backend devolvió mensaje, no sesión
-
-      if (
-        resp.status === 403 ||
-        notApprovedByText ||
-        notApprovedFlag ||
-        noUserButOK
-      ) {
-        console.warn(
-          "🚫 Cuenta NO aprobada. Redirigiendo a NoApproved.html …",
-          {
-            status: resp.status,
-            notApprovedByText,
-            notApprovedFlag,
-            noUserButOK,
-          }
-        );
-        // Ruta absoluta para evitar problemas de path
-        window.location.assign("/NoApproved.html");
-        return;
-      }
-      // -------------------------------------------------
-
-      // ✅ Login correcto
-      if (resp.ok && data?.user) {
-        console.log("✅ Login OK. Usuario:", data.user);
-        if (data.user.rol === "admin") {
+      // ✅ Login exitoso
+      if (response.ok && result.user) {
+        console.log("✅ Usuario autenticado:", result.user);
+        if (result.user.rol === "admin") {
           window.location.assign("/admin.html");
         } else {
           window.location.assign("/dashboard.html");
@@ -90,12 +55,26 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // ❌ Cualquier otro error
-      console.error("❌ Error en login:", data);
-      setError(
-        "form-login",
-        data?.error || data?.message || "Error en el inicio de sesión"
-      );
+      // 🚫 Usuario no aprobado (403 o flag explícita)
+      const notApproved =
+        response.status === 403 ||
+        result.approved === false ||
+        (result.user && result.user.approved === false);
+
+      if (notApproved) {
+        console.warn(
+          "🚫 Cuenta no aprobada — generando token de acceso temporal..."
+        );
+        // Guardar un token temporal en sessionStorage
+        const token = btoa(`${correo}:${Date.now()}`); // cifrado base64 simple
+        sessionStorage.setItem("noApprovedToken", token);
+        window.location.assign("/NoApproved.html");
+        return;
+      }
+
+      // ❌ Otro error
+      console.error("❌ Error en login:", result);
+      setError("form-login", result.error || "Error en el inicio de sesión");
     } catch (err) {
       console.error("🔥 Error en el frontend:", err);
       setError("form-login", `Error en el inicio de sesión: ${err.message}`);
@@ -107,7 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
       fieldId === "form-login"
         ? document.querySelector(".form-error")
         : document.getElementById(fieldId).parentElement;
-    const el = field.querySelector(".error-text") || field;
-    el.textContent = message;
+    const errorText = field.querySelector(".error-text") || field;
+    errorText.textContent = message;
   }
 });
