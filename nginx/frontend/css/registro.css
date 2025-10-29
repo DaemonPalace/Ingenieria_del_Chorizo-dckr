@@ -1,8 +1,5 @@
-/* =========================================
-   🎨 ESTILO GENERAL
-========================================= */
 body {
-  font-family: 'Questrial', sans-serif;
+  font-family: "Questrial", sans-serif;
   background-color: #f9f3e3;
   display: flex;
   justify-content: center;
@@ -11,16 +8,14 @@ body {
   margin: 0;
 }
 
-/* =========================================
-   🔙 BOTÓN VOLVER
-========================================= */
+/* Botón Volver */
 .back-btn {
   position: absolute;
   top: 10px;
   left: 10px;
   padding: 6px 12px;
   font-size: 12px;
-  background-color: #3C2E26;
+  background-color: #3c2e26;
   color: #fff;
   border-radius: 6px;
   text-decoration: none;
@@ -30,9 +25,7 @@ body {
   background-color: #2a211b;
 }
 
-/* =========================================
-   📦 CONTENEDOR PRINCIPAL
-========================================= */
+/* Contenedor principal */
 .register-container {
   display: flex;
   flex-direction: column;
@@ -43,12 +36,10 @@ body {
   background-color: #fff;
   border: 2px solid #d4a373;
   border-radius: 15px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* =========================================
-   👩‍🍳 ENCABEZADO
-========================================= */
+/* Encabezado */
 .register-header {
   text-align: center;
   margin-bottom: 25px;
@@ -59,8 +50,8 @@ body {
   margin-bottom: 8px;
 }
 .register-header h1 {
-  font-family: 'Great Vibes', cursive;
-  color: #3C2E26;
+  font-family: "Great Vibes", cursive;
+  color: #3c2e26;
   font-size: 32px;
   margin: 0;
 }
@@ -70,9 +61,7 @@ body {
   margin-top: 3px;
 }
 
-/* =========================================
-   🧩 CAMPOS DEL FORMULARIO
-========================================= */
+/* Campos */
 .input-group {
   width: 100%;
   margin-bottom: 18px;
@@ -80,7 +69,7 @@ body {
 .input-group label {
   display: block;
   font-weight: bold;
-  color: #3C2E26;
+  color: #3c2e26;
   margin-bottom: 6px;
 }
 .input-group input {
@@ -95,17 +84,14 @@ body {
 }
 .input-group input:focus {
   border-color: #b97b33;
-  box-shadow: 0 0 6px rgba(185,123,51,0.3);
+  box-shadow: 0 0 6px rgba(185, 123, 51, 0.3);
 }
 
-/* =========================================
-   👁️ MOSTRAR / OCULTAR CONTRASEÑA
-========================================= */
+/* Mostrar / Ocultar contraseña */
 .password-wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  width: 100%;
 }
 .password-wrapper input {
   width: 100%;
@@ -118,7 +104,7 @@ body {
   border: none;
   cursor: pointer;
   font-size: 18px;
-  color: #3C2E26;
+  color: #3c2e26;
   transition: color 0.3s, transform 0.2s;
 }
 .toggle-password:hover {
@@ -126,16 +112,42 @@ body {
   transform: scale(1.1);
 }
 
-/* =========================================
-   📷 BOTÓN PERSONALIZADO ARCHIVO
-   — sin fondo, con margen y centrado
-========================================= */
+/* Requisitos de contraseña */
+.password-requirements {
+  display: none;
+  background: #fff8e7;
+  border: 1px solid #d4a373;
+  border-radius: 8px;
+  padding: 10px 15px;
+  font-size: 13px;
+  margin-top: 8px;
+  color: #3c2e26;
+}
+.password-requirements ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.password-requirements li {
+  padding: 3px 0;
+  transition: color 0.3s;
+}
+.password-requirements li.met::before {
+  content: "✅ ";
+  color: #28a745;
+}
+.password-requirements li:not(.met)::before {
+  content: "❌ ";
+  color: #dc3545;
+}
+
+/* Archivo e imagen */
 .file-label {
   display: block;
   width: 80%;
-  margin: 10px auto 15px auto; /* 👈 espaciado arriba y abajo */
-  background: none; /* sin fondo */
-  color: #3C2E26;
+  margin: 10px auto 15px auto;
+  background: none;
+  color: #3c2e26;
   text-align: center;
   padding: 10px 16px;
   border: 1.5px solid #d4a373;
@@ -150,13 +162,6 @@ body {
   color: #2a211b;
   transform: scale(1.02);
 }
-.file-label:active {
-  transform: scale(0.97);
-}
-
-/* =========================================
-   🖼️ VISTA PREVIA DE IMAGEN
-========================================= */
 #preview-container {
   text-align: center;
   margin-top: 15px;
@@ -167,18 +172,16 @@ body {
   object-fit: cover;
   border-radius: 10px;
   border: 2px solid #d4a373;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   display: none;
   margin: 20px auto 0 auto;
 }
 
-/* =========================================
-   🧈 BOTÓN REGISTRO
-========================================= */
+/* Botón */
 .register-btn {
   width: 100%;
   padding: 12px;
-  background-color: #3C2E26;
+  background-color: #3c2e26;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -191,13 +194,8 @@ body {
   background-color: #2a211b;
   transform: scale(1.02);
 }
-.register-btn:active {
-  transform: scale(0.98);
-}
 
-/* =========================================
-   🔗 ENLACE LOGIN
-========================================= */
+/* Link login */
 .login-link {
   margin-top: 18px;
   font-size: 14px;
@@ -207,16 +205,13 @@ body {
   color: #d47f29;
   text-decoration: none;
   font-weight: bold;
-  transition: color 0.3s;
 }
 .login-link a:hover {
-  color: #3C2E26;
+  color: #3c2e26;
   text-decoration: underline;
 }
 
-/* =========================================
-   ⚠️ ERRORES Y VALIDACIÓN
-========================================= */
+/* Errores */
 .error-text {
   font-size: 13px;
   color: #dc3545;
@@ -225,9 +220,9 @@ body {
 }
 input.valid {
   border: 2px solid #28a745;
-  box-shadow: 0 0 5px rgba(40,167,69,0.3);
+  box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
 }
 input.invalid {
   border: 2px solid #dc3545;
-  box-shadow: 0 0 5px rgba(220,53,69,0.3);
+  box-shadow: 0 0 5px rgba(220, 53, 69, 0.3);
 }
