@@ -1,23 +1,28 @@
-/* --------------------------------------------------------------
-   ADMIN PANEL – Adaptado al HTML con Bootstrap
-   -------------------------------------------------------------- */
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const loader = document.getElementById("loader");
-  const API_BASE = "http://localhost:3000"; // mismo origen → rutas relativas
+  const loaderText = document.getElementById("loader-text");
+  const API_BASE = "http://localhost:3000";
   let editingProductId = null;
 
-  // === 1. Validación de sesión ===
-  document.body.classList.remove("auth-verified");
+  // Mostrar mensaje en loader
+  const showLoaderMsg = (msg) => {
+    loaderText.textContent = msg;
+  };
+
+  // ==========================
+  // 🔐 VALIDACIÓN DE SESIÓN
+  // ==========================
   document.body.style.visibility = "hidden";
   document.body.style.opacity = "0";
+  showLoaderMsg("Verificando sesión...");
 
   const token = sessionStorage.getItem("authToken");
   const role = sessionStorage.getItem("userRole");
   const expiresAt = sessionStorage.getItem("tokenExpiresAt");
   const email = sessionStorage.getItem("userEmail");
-  console.log("Token actual:", sessionStorage.getItem("authToken"));
+  const now = Date.now();
 
-  if (!token || !role || !expiresAt || Date.now() > +expiresAt) {
+  if (!token || !role || !expiresAt || now > parseInt(expiresAt, 10)) {
     sessionStorage.clear();
     window.location.replace("/login.html");
     return;
@@ -29,106 +34,136 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Mostrar contenido
+  // Mostrar panel tras validación
   setTimeout(() => {
     loader.classList.add("fade-out");
     document.body.style.visibility = "visible";
     document.body.style.opacity = "1";
-    document.body.classList.add("auth-verified");
-  }, 600);
+  }, 500);
 
-  // Logout
-  document.getElementById("logoutBtn").addEventListener("click", (e) => {
-    e.preventDefault();
-    sessionStorage.clear();
-    window.location.replace("/login.html");
-  });
+  const info = document.getElementById("user-info");
+  if (info && email) info.textContent = `👋 Bienvenido, ${email} (${role})`;
 
-  // Auto-logout
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      sessionStorage.clear();
+      window.location.replace("/login.html");
+    });
+  }
+
+  // Expiración automática
   setInterval(() => {
-    if (Date.now() > +sessionStorage.getItem("tokenExpiresAt")) {
-      alert("Tu sesión ha expirado. Inicia sesión nuevamente.");
+    const exp = parseInt(sessionStorage.getItem("tokenExpiresAt"), 10);
+    if (Date.now() > exp) {
+      alert("⚠️ Tu sesión ha expirado. Inicia sesión nuevamente.");
       sessionStorage.clear();
       window.location.replace("/login.html");
     }
-  }, 60_000);
+  }, 60000);
 
-  // === 2. Cabeceras con JWT ===
   const headers = () => ({
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`
+    Authorization: `Bearer ${token}`,
   });
 
-  // === 3. CARGAR USUARIOS (CLIENTES) ===
+  // ==========================
+  // 👥 GESTIÓN DE CLIENTES
+  // ==========================
   const tablaClientesBody = document.querySelector("#tablaClientes tbody");
 
   async function cargarUsuarios() {
+    showLoaderMsg("Cargando usuarios...");
     try {
-      const res = await fetch(`${API_BASE}/api/users`, { headers: headers() });
+      const res = await fetch(`${API_BASE}/api/users?rol=cliente`, {
+        headers: headers(),
+      });
       if (!res.ok) throw new Error(await res.text());
       const usuarios = await res.json();
 
       tablaClientesBody.innerHTML = "";
-      usuarios.forEach(u => {
+      usuarios.sort((a, b) => a.aprobado - b.aprobado);
+
+      usuarios.forEach((u) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${u.nombre}</td>
           <td>${u.correo}</td>
-          <td><span class="badge bg-${u.rol === 'superadmin' ? 'danger' : u.rol === 'admin' ? 'warning' : 'secondary'}">${u.rol}</span></td>
-          <td>
-            ${!u.aprobado ? `<button class="btn btn-sm btn-success approve-btn" data-id="${u.id_usuario}">Aprobar</button>` : ''}
-            <button class="btn btn-sm btn-danger delete-btn" data-id="${u.id_usuario}">Eliminar</button>
+          <td><span class="badge bg-${
+            u.rol === "admin" ? "warning" : "secondary"
+          }">${u.rol}</span></td>
+          <td class="text-center">
+            ${
+              u.aprobado
+                ? `<button class="btn btn-warning btn-sm desactivar" data-id="${u.id_usuario}">
+                     <i class="fas fa-user-slash"></i> Desactivar
+                   </button>`
+                : `<button class="btn btn-success btn-sm aprobar" data-id="${u.id_usuario}">
+                     <i class="fas fa-user-check"></i> Aprobar
+                   </button>`
+            }
+            <button class="btn btn-danger btn-sm eliminar" data-id="${
+              u.id_usuario
+            }">
+              <i class="fas fa-trash"></i> Eliminar
+            </button>
           </td>
         `;
         tablaClientesBody.appendChild(tr);
       });
 
-      // Aprobar
-      document.querySelectorAll(".approve-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.dataset.id;
-          try {
-            const r = await fetch(`${API_BASE}/api/users/${id}/approve`, {
-              method: "PUT",
-              headers: headers()
-            });
-            if (!r.ok) throw new Error(await r.text());
-            alert("Usuario aprobado");
-            cargarUsuarios();
-          } catch (err) {
-            alert("Error: " + err.message);
-          }
-        });
-      });
-
-      // Eliminar
-      document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          if (!confirm("¿Eliminar este usuario?")) return;
-          const id = btn.dataset.id;
-          try {
-            const r = await fetch(`${API_BASE}/api/users/${id}`, {
-              method: "DELETE",
-              headers: headers()
-            });
-            if (!r.ok) throw new Error(await r.text());
-            alert("Usuario eliminado");
-            cargarUsuarios();
-          } catch (err) {
-            alert("Error: " + err.message);
-          }
-        });
-      });
-
+      showLoaderMsg("Cargando productos...");
     } catch (err) {
-      console.error(err);
-      alert("Error cargando usuarios: " + err.message);
+      console.error("Error cargando usuarios:", err);
+      showLoaderMsg("❌ Error al cargar usuarios");
     }
   }
 
-  cargarUsuarios();
+  tablaClientesBody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
 
-  // === 4. GESTIÓN DE PRODUCTOS ===
+    const id = btn.dataset.id;
+    let endpoint = "";
+    let method = "PUT";
+    let mensaje = "";
+
+    if (btn.classList.contains("aprobar")) {
+      if (!confirm("¿Aprobar este cliente?")) return;
+      endpoint = `${API_BASE}/api/users/${id}/approve`;
+      mensaje = "✅ Usuario aprobado correctamente.";
+    } else if (btn.classList.contains("desactivar")) {
+      if (!confirm("¿Desactivar este cliente?")) return;
+      endpoint = `${API_BASE}/api/users/${id}/deactivate`;
+      mensaje = "⚠️ Usuario desactivado correctamente.";
+    } else if (btn.classList.contains("eliminar")) {
+      if (!confirm("¿Eliminar este usuario?")) return;
+      endpoint = `${API_BASE}/api/users/${id}`;
+      method = "DELETE";
+      mensaje = "🗑️ Usuario eliminado correctamente.";
+    }
+
+    try {
+      await fetch(endpoint, {
+        method,
+        headers: headers(),
+        body:
+          method === "PUT"
+            ? JSON.stringify({ aprobado_por_email: email })
+            : undefined,
+      });
+      alert(mensaje);
+      cargarUsuarios();
+    } catch (err) {
+      alert("❌ Error procesando la solicitud.");
+    }
+  });
+
+  await cargarUsuarios();
+
+  // ==========================
+  // 🛒 GESTIÓN DE PRODUCTOS
+  // ==========================
   const formProducto = document.getElementById("formProducto");
   const tablaProductosBody = document.querySelector("#tablaProductos tbody");
   const previewImagen = document.getElementById("previewImagen");
@@ -149,136 +184,43 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Cargar productos
   async function cargarProductos() {
+    showLoaderMsg("Cargando productos...");
     try {
-      const res = await fetch(`${API_BASE}/api/products`, { headers: headers() });
+      const res = await fetch(`${API_BASE}/api/products`, {
+        headers: headers(),
+      });
       if (!res.ok) throw new Error(await res.text());
       const productos = await res.json();
 
       tablaProductosBody.innerHTML = "";
-      productos.forEach(p => {
+      productos.forEach((p) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${p.nombre}</td>
-          <td><img src="${p.imagen_url}" alt="${p.nombre}" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;"></td>
+          <td><img src="${p.imagen_url}" alt="${
+          p.nombre
+        }" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;"></td>
           <td>$${parseFloat(p.precio).toFixed(2)}</td>
           <td>${p.descripcion}</td>
           <td>
-            <button class="btn btn-sm btn-warning edit-btn" data-id="${p.id_producto}">Editar</button>
-            <button class="btn btn-sm btn-danger delete-btn" data-id="${p.id_producto}">Eliminar</button>
+            <button class="btn btn-sm btn-warning edit-btn" data-id="${
+              p.id_producto
+            }">Editar</button>
+            <button class="btn btn-sm btn-danger delete-btn" data-id="${
+              p.id_producto
+            }">Eliminar</button>
           </td>
         `;
         tablaProductosBody.appendChild(tr);
       });
 
-      // Editar
-      document.querySelectorAll(".edit-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const id = btn.dataset.id;
-          const prod = productos.find(p => p.id_producto == id);
-          document.getElementById("nombreProducto").value = prod.nombre;
-          document.getElementById("precioProducto").value = prod.precio;
-          document.getElementById("descripcionProducto").value = prod.descripcion;
-          previewImagen.src = prod.imagen_url;
-          previewImagen.classList.remove("d-none");
-          editingProductId = id;
-          formProducto.scrollIntoView({ behavior: "smooth" });
-        });
-      });
-
-      // Eliminar
-      document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          if (!confirm("¿Eliminar este producto?")) return;
-          const id = btn.dataset.id;
-          try {
-            const r = await fetch(`${API_BASE}/api/products/${id}`, {
-              method: "DELETE",
-              headers: headers()
-            });
-            if (!r.ok) throw new Error(await r.text());
-            alert("Producto eliminado");
-            cargarProductos();
-          } catch (err) {
-            alert("Error: " + err.message);
-          }
-        });
-      });
-
+      loader.classList.add("fade-out");
     } catch (err) {
-      console.error(err);
-      alert("Error cargando productos: " + err.message);
+      console.error("Error cargando productos:", err);
+      showLoaderMsg("❌ Error al cargar productos");
     }
   }
 
-  cargarProductos();
-
-  // === 5. ENVIAR FORMULARIO (Crear / Actualizar) ===
-  formProducto.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData();
-    formData.append("nombre", document.getElementById("nombreProducto").value.trim());
-    formData.append("precio", document.getElementById("precioProducto").value);
-    formData.append("descripcion", document.getElementById("descripcionProducto").value.trim());
-
-    const imgFile = document.getElementById("imagenProducto").files[0];
-    if (imgFile) formData.append("imagen", imgFile);
-
-    const method = editingProductId ? "PUT" : "POST";
-    const url = editingProductId
-      ? `${API_BASE}/api/products/${editingProductId}`
-      : `${API_BASE}/api/products`;
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-
-      alert(editingProductId ? "Producto actualizado" : "Producto creado");
-      formProducto.reset();
-      previewImagen.src = "";
-      previewImagen.classList.add("d-none");
-      editingProductId = null;
-      cargarProductos();
-    } catch (err) {
-      alert("Error: " + err.message);
-    }
-  });
-
-  // === 6. CANCELAR EDICIÓN (opcional) ===
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "btn btn-secondary mt-3 ms-2";
-  cancelBtn.textContent = "Cancelar";
-  cancelBtn.style.display = "none";
-  cancelBtn.onclick = () => {
-    formProducto.reset();
-    previewImagen.src = "";
-    previewImagen.classList.add("d-none");
-    editingProductId = null;
-    cancelBtn.style.display = "none";
-  };
-
-  // Insertar botón cancelar después del botón "Guardar"
-  document.querySelector("#formProducto button[type='submit']").after(cancelBtn);
-
-  // Mostrar botón cancelar solo en edición
-  const originalSubmit = formProducto.onsubmit;
-  formProducto.onsubmit = (e) => {
-    if (editingProductId) cancelBtn.style.display = "inline-block";
-    return originalSubmit.call(formProducto, e);
-  };
-
-  // Al cargar edición, mostrar cancelar
-  document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("edit-btn")) {
-      cancelBtn.style.display = "inline-block";
-    }
-  });
+  await cargarProductos();
 });
