@@ -32,6 +32,7 @@ services:
       - MINIO_PORT=${MINIO_PORT}
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET} 
     networks:
       - app-network
     depends_on:

@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
+    // 🧹 Limpiar mensajes de error anteriores
     document
       .querySelectorAll(".error-text")
       .forEach((el) => (el.textContent = ""));
@@ -16,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const password = document.getElementById("password").value;
     let hasError = false;
 
+    // ✅ Validaciones básicas
     if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
       setError("correo", "Ingresa un correo válido");
       hasError = true;
@@ -27,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hasError) return;
 
     try {
+      // 🚀 Petición al backend
       const response = await fetch("http://localhost:3000/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -37,15 +41,21 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("📩 Respuesta del backend:", result);
 
       // ✅ Login exitoso
-      if (response.ok && result.user) {
-        const token = btoa(`${correo}:${Date.now()}:${Math.random()}`);
+      if (response.ok && result.user && result.token) {
         const expiration = Date.now() + 20 * 60 * 1000; // 20 minutos
 
-        sessionStorage.setItem("authToken", token);
+        // 🔐 Guardar token JWT real
+        sessionStorage.setItem("authToken", result.token);
         sessionStorage.setItem("tokenExpiresAt", expiration);
         sessionStorage.setItem("userRole", result.user.rol);
         sessionStorage.setItem("userEmail", result.user.correo);
 
+        console.log("✅ Sesión iniciada correctamente:", {
+          rol: result.user.rol,
+          correo: result.user.correo,
+        });
+
+        // Redirección según rol
         if (["admin", "superadmin"].includes(result.user.rol)) {
           window.location.assign("/admin.html");
         } else {
@@ -62,11 +72,12 @@ document.addEventListener("DOMContentLoaded", () => {
       ) {
         const tempToken = btoa(`${correo}:${Date.now()}`);
         sessionStorage.setItem("noApprovedToken", tempToken);
+        console.warn("⚠️ Usuario no aprobado, redirigiendo...");
         window.location.assign("/NoApproved.html");
         return;
       }
 
-      // ❌ Otro error
+      // ❌ Error de autenticación u otro fallo
       setError("form-login", result.error || "Error en el inicio de sesión");
     } catch (err) {
       console.error("🔥 Error en el frontend:", err);
@@ -74,6 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // 🧩 Función para mostrar errores
   function setError(fieldId, message) {
     const field =
       fieldId === "form-login"
@@ -82,4 +94,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const errorText = field.querySelector(".error-text") || field;
     errorText.textContent = message;
   }
+
+  // 🧠 Función auxiliar para futuras peticiones autenticadas
+  // Usa el JWT guardado en sessionStorage
+  window.apiFetch = async (url, options = {}) => {
+    const token = sessionStorage.getItem("authToken");
+    const headers = {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    };
+
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401) {
+      console.warn(
+        "⚠️ Sesión expirada o token inválido. Redirigiendo al login..."
+      );
+      sessionStorage.clear();
+      window.location.assign("/login.html");
+      return;
+    }
+
+    return res;
+  };
 });
