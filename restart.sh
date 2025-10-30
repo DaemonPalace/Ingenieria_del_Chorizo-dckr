@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "Stopping containers..."
+echo "Stopping containers and removing volumes..."
 docker compose down -v
 
-echo "Rebuilding images..."
-docker compose build
+echo "Rebuilding images without cache..."
+docker compose build --no-cache
 
 echo "Starting fresh stack..."
 docker compose up -d
