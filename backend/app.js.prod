@@ -22,17 +22,17 @@ const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: 'arepabuelasdb',
-  password: process.env.DB_PASS,
+  password: fs.readFileSync(process.env.DB_PASS_FILE, 'utf8').trim(),
   port: 5432,
 });
 
 // Configure MinIO client
 const minioClient = new Minio.Client({
-  endPoint:'minio',
-  port: 9000,
+  endPoint: process.env.MINIO_HOST || 'minio',
+  port: parseInt(process.env.MINIO_PORT) || 9000,
   useSSL: false,
-  accessKey: process.env.MINIO_ACCESS_KEY,
-  secretKey: process.env.MINIO_SECRET_KEY,
+  accessKey: fs.readFileSync(process.env.MINIO_ACCESS_KEY_FILE, 'utf8').trim(),
+  secretKey: fs.readFileSync(process.env.MINIO_SECRET_KEY_FILE, 'utf8').trim(),
 });
 
 // Configure multer for file uploads
