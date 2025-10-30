@@ -142,4 +142,3 @@ secrets/
 # Docker
 docker-compose.override.yml
 .docker/
-/.secrets

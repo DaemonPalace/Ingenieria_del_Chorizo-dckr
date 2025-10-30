@@ -5,7 +5,6 @@ const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const fs = require('fs');
 
 const app = express();
 const port = 3000;
@@ -28,11 +27,11 @@ const pool = new Pool({
 
 // Configure MinIO client
 const minioClient = new Minio.Client({
-  endPoint: process.env.MINIO_HOST || 'minio',
+  endPoint: process.env.MINIO_HOST || 'localhost',
   port: parseInt(process.env.MINIO_PORT) || 9000,
-  useSSL: false,
-  accessKey: fs.readFileSync(process.env.MINIO_ACCESS_KEY_FILE, 'utf8').trim(),
-  secretKey: fs.readFileSync(process.env.MINIO_SECRET_KEY_FILE, 'utf8').trim(),
+  useSSL: false, // Set to true in production with HTTPS
+  accessKey: process.env.MINIO_ACCESS_KEY,
+  secretKey: process.env.MINIO_SECRET_KEY,
 });
 
 // Configure multer for file uploads
