@@ -1,4 +1,9 @@
+version: "3.9"
+
 services:
+  # ======================
+  # FRONTEND (NGINX)
+  # ======================
   web:
     image: nginx:latest
     build:
@@ -8,14 +13,21 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      # nginx configuration and static files
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/frontend:/usr/share/nginx/html
-      - ./nginx/certs:/etc/nginx/certs:ro
+      # nginx SSL certs
+      - ./certs/nginx:/etc/nginx/certs:ro
+      # CA certs (for reverse-proxy trust if needed)
+      - ./certs/ca:/usr/local/share/ca-certificates/ca:ro
     networks:
       - app-network
     depends_on:
       - backend
 
+  # ======================
+  # BACKEND (HTTPS SERVER)
+  # ======================
   backend:
     build:
       context: ./backend
@@ -24,6 +36,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/rootCA.crt
       - DB_HOST=db
       - DB_USER=${POSTGRES_USER}
       - DB_PASS=${POSTGRES_PASSWORD}
@@ -32,13 +45,22 @@ services:
       - MINIO_PORT=${MINIO_PORT}
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET} 
+      - JWT_SECRET=${JWT_SECRET}
+      - SSL_CERT_PATH=/etc/ssl/backend/backend.crt
+      - SSL_KEY_PATH=/etc/ssl/backend/backend.key
+    volumes:
+      - ./certs/backend:/etc/ssl/backend:ro
+      - ./certs/ca/rootCA.crt:/etc/ssl/certs/rootCA.crt:ro
+    command: npm start
     networks:
       - app-network
     depends_on:
       - db
       - minio
 
+  # ======================
+  # DATABASE (PostgreSQL + SSL)
+  # ======================
   db:
     image: postgres:15
     environment:
@@ -48,9 +70,21 @@ services:
     volumes:
       - ./db/data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./certs/db:/var/lib/postgresql/certs:ro
+      - ./certs/ca:/usr/local/share/ca-certificates/ca:ro
+    command: >
+      postgres
+      -c ssl=on
+      -c ssl_cert_file=/var/lib/postgresql/certs/db.crt
+      -c ssl_key_file=/var/lib/postgresql/certs/db.key
+      -c ssl_ca_file=/usr/local/share/ca-certificates/ca/rootCA.crt
     networks:
       - app-network
 
+
+  # ======================
+  # STORAGE (MinIO + HTTPS)
+  # ======================
   minio:
     image: minio/minio:latest
     environment:
@@ -58,8 +92,14 @@ services:
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
     volumes:
       - ./minio/data:/data
+      # Mount SSL certs to expected MinIO locations
+      - ./certs/minio/minio.crt:/root/.minio/certs/public.crt:ro
+      - ./certs/minio/minio.key:/root/.minio/certs/private.key:ro
+      # CA cert for internal requests
+      - ./certs/ca:/usr/local/share/ca-certificates/ca:ro
     command: server /data --console-address ":9001"
     ports:
+      - "9000:9000"
       - "9001:9001"
     networks:
       - app-network

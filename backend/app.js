@@ -33,7 +33,7 @@ const pool = new Pool({
 const minioClient = new Minio.Client({
   endPoint: "minio",
   port: 9000,
-  useSSL: false,
+  useSSL: true,
   accessKey: process.env.MINIO_ACCESS_KEY,
   secretKey: process.env.MINIO_SECRET_KEY,
 });
