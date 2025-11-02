@@ -55,8 +55,14 @@ services:
     volumes:
       - ./db/data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./certs/db:/var/lib/postgresql/certs:ro
+      - ./certs/db:/var/lib/postgresql/certs
       - ./certs/ca:/usr/local/share/ca-certificates/ca:ro
+    entrypoint: >
+      sh -c "
+        chown postgres:postgres /var/lib/postgresql/certs/db.key &&
+        chmod 600 /var/lib/postgresql/certs/db.key &&
+        docker-entrypoint.sh postgres
+      "
     command: >
       postgres
       -c ssl=on
