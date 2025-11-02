@@ -78,15 +78,15 @@ if [[ "$MODE" == "development" ]]; then
     echo "Creating .env with generated secrets..."
     {
         echo "POSTGRES_USER=arepabuelas"
-        echo "POSTGRES_PASSWORD=$(cat "$PROJECT_ROOT/.secrets/postgres_password")"
+        echo "POSTGRES_PASSWORD=arepabuelas123"
         echo "POSTGRES_DB=arepabuelasdb"
-        echo "MINIO_ROOT_USER=$(cat "$PROJECT_ROOT/.secrets/minio_root_user")"
-        echo "MINIO_ROOT_PASSWORD=$(cat "$PROJECT_ROOT/.secrets/minio_root_password")"
-        echo "JWT_SECRET=$(cat "$PROJECT_ROOT/.secrets/jwt_secret")"
-        echo "STORAGE_URL=http://minio:9000"
+        echo "MINIO_ROOT_USER=arepabuelas123#456"
+        echo "MINIO_ROOT_PASSWORD=arepabuelasdelaesquina123"
+        echo "JWT_SECRET=arepabuelas_secret_key"
+        echo "STORAGE_URL=https://minio:9000"
         echo "MINIO_HOST=minio"
         echo "MINIO_PORT=9000"
-    } > "$PROJECT_ROOT/.env"
+    } > "$PROJECT_ROOT/docker-vars.env"
     echo "Environment: .env (generated with secrets)"
 else
     COMPOSE_SRC="$PROJECT_ROOT/docker-compose.yml.prod"
@@ -113,11 +113,11 @@ docker compose up -d --build
 # 9. Summary ------------------------------------------------------
 echo
 echo "Stack is running!"
-echo "  Web: http://localhost"
-echo "  MinIO Console: http://localhost:9001"
-echo "  Credentials stored in: $PROJECT_ROOT/.secrets/"
+echo "  Web: https://localhost"
+echo "  MinIO Console: https://localhost:9001"
+echo "  Credentials stored in: $PROJECT_ROOT/docker-vars.env"
 if [[ "$MODE" == "development" ]]; then
-    echo "  Environment file: .env"
+    echo "  Environment file: docker-vars.env"
 else
     echo "  Secrets managed via Docker"
 fi
