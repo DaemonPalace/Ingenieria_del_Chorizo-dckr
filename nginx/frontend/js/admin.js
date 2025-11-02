@@ -1,6 +1,9 @@
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🚀 Panel de administrador cargado");
 
+  // 🔒 Oculta el contenido por defecto (evita parpadeos)
+  document.body.style.display = "none";
+
   // ==========================
   // 🌐 CONFIGURACIÓN AUTOMÁTICA DEL BACKEND
   // ==========================
@@ -8,11 +11,38 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("🔗 Conectando con API_BASE =", API_BASE);
 
   // ==========================
-  // 🔧 FUNCIONES AUXILIARES
+  // 🔐 VALIDACIÓN DE SESIÓN
   // ==========================
   const token = sessionStorage.getItem("authToken");
-  const email = sessionStorage.getItem("userEmail") || "admin@arepabuelas.com";
+  const email = sessionStorage.getItem("userEmail");
+  const role = sessionStorage.getItem("userRole");
+  const expiresAt = sessionStorage.getItem("tokenExpiresAt");
+  const now = Date.now();
 
+  // Si no hay token o expiró → redirigir inmediatamente
+  if (!token || !role || !expiresAt || now > parseInt(expiresAt, 10)) {
+    console.warn("⚠️ Sesión no válida o expirada. Redirigiendo a login...");
+    sessionStorage.clear();
+    window.location.replace("/login.html");
+    return;
+  }
+
+  // Si el rol no es admin/superadmin → redirigir
+  if (!["admin", "superadmin"].includes(role.toLowerCase())) {
+    console.warn("⚠️ Rol no autorizado:", role);
+    sessionStorage.clear();
+    window.location.replace("/index.html");
+    return;
+  }
+
+  // ✅ Si la sesión es válida → mostrar el panel
+  document.body.style.display = "block";
+  document.body.classList.add("loaded");
+  console.log("✅ Sesión válida, mostrando panel...");
+
+  // ==========================
+  // 🔧 FUNCIONES AUXILIARES
+  // ==========================
   const headers = () => ({
     "Content-Type": "application/json",
     Authorization: token ? `Bearer ${token}` : "",
@@ -71,6 +101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // Manejo de botones de usuario
   tablaClientesBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
@@ -169,4 +200,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================
   await cargarUsuarios();
   await cargarProductos();
+
+  console.log("✅ Panel listo.");
 });

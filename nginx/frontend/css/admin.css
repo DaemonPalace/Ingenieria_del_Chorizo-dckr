@@ -1,8 +1,20 @@
-/* Estilo general */
+/* ===============================
+   OCULTAR COMPLETAMENTE EL PANEL HASTA VALIDAR SESIÓN
+   =============================== */
 body {
-  font-family: 'Anton', sans-serif, 'Questrial', sans-serif;
-  background-color: #f9f3e3;
+  display: none !important; /* 🚫 Totalmente oculto por defecto */
+  opacity: 0;
+  visibility: hidden;
 }
+
+/* Cuando la sesión es válida, el JS aplica esto */
+body.loaded {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease-in;
+}
+
 
 /* Sidebar */
 .sidebar {
