@@ -11,7 +11,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Resolve-Path "$ScriptDir\..\.."
 Set-Location $ProjectRoot
 
-Write-Host "🚀 Installing Arepabuelas stack in mode: $Mode" -ForegroundColor Cyan
+Write-Host "Installing in mode: $Mode"
 
 # Normalize mode
 switch ($Mode) {
@@ -22,88 +22,85 @@ switch ($Mode) {
 }
 
 # === Clean old secrets ===
-Write-Host "🧹 Cleaning old secrets and backend app.js..."
+Write-Host "Cleaning old secrets and backend app.js..."
 Remove-Item "$ProjectRoot\.secrets" -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory "$ProjectRoot\.secrets" | Out-Null
 Remove-Item "$ProjectRoot\backend\app.js" -Force -ErrorAction SilentlyContinue
 
-# === Generate secrets (robust version) ===
+# === Generate secrets ===
 Function New-Secret {
     param($Name)
     $Path = "$ProjectRoot\.secrets\$Name"
-
-    # Generate long random string and clean invalid chars
-    $Raw = [System.Convert]::ToBase64String(
-        (1..48 | ForEach-Object { Get-Random -Minimum 0 -Maximum 255 })
-    ) -replace '[^A-Za-z0-9]', ''
-
-    # Ensure at least 32 characters
-    if ($Raw.Length -lt 32) {
-        $Extra = -join ((65..90) + (97..122) | Get-Random -Count (32 - $Raw.Length) | ForEach-Object { [char]$_ })
-        $Raw += $Extra
-    }
-
-    $Secret = $Raw.Substring(0, 32)
-    Set-Content -Path $Path -Value $Secret -Encoding UTF8
-    Write-Host "🔑 Generated secret: $Name"
+    $Bytes = New-Object byte[] 32
+    (New-Object System.Random).NextBytes($Bytes)
+    $Base64 = [System.Convert]::ToBase64String($Bytes)
+    $Secret = ($Base64 -replace '[^A-Za-z0-9]', '').Substring(0, [Math]::Min(32, $Base64.Length))
+    Set-Content -Path $Path -Value $Secret -Encoding ascii
+    Write-Host "Generated secret: $Name"
 }
 
-# === Generate all secrets ===
 New-Secret "postgres_password"
 New-Secret "minio_root_user"
 New-Secret "minio_root_password"
 New-Secret "jwt_secret"
 
-# === Copy backend app.js based on mode ===
+# === Copy app.js ===
 if ($Mode -eq "development") {
     Copy-Item "$ProjectRoot\backend\app.js.dev" "$ProjectRoot\backend\app.js" -Force
-    Write-Host "🧩 Using backend/app.js.dev"
 } else {
     Copy-Item "$ProjectRoot\backend\app.js.prod" "$ProjectRoot\backend\app.js" -Force
-    Write-Host "🧩 Using backend/app.js.prod"
 }
 
-# === Select docker-compose ===
+# === docker-compose selection ===
 if ($Mode -eq "development") {
     Copy-Item "$ProjectRoot\docker-compose.yml.dev" "$ProjectRoot\docker-compose.yml" -Force
-    Write-Host "🐳 Using docker-compose.yml.dev"
-    
-    # Create .env file
-@"
+    Write-Host "Using docker-compose.yml.dev"
+
+    # Create .env
+    $envContent = @'
 POSTGRES_USER=arepabuelas
-POSTGRES_PASSWORD=$(Get-Content "$ProjectRoot\.secrets\postgres_password")
+POSTGRES_PASSWORD={0}
 POSTGRES_DB=arepabuelasdb
-MINIO_ROOT_USER=$(Get-Content "$ProjectRoot\.secrets\minio_root_user")
-MINIO_ROOT_PASSWORD=$(Get-Content "$ProjectRoot\.secrets\minio_root_password")
-JWT_SECRET=$(Get-Content "$ProjectRoot\.secrets\jwt_secret")
+MINIO_ROOT_USER={1}
+MINIO_ROOT_PASSWORD={2}
+JWT_SECRET={3}
 STORAGE_URL=http://minio:9000
 MINIO_HOST=minio
 MINIO_PORT=9000
-"@ | Out-File "$ProjectRoot\.env" -Encoding utf8
+'@ -f `
+    (Get-Content "$ProjectRoot\.secrets\postgres_password"),
+    (Get-Content "$ProjectRoot\.secrets\minio_root_user"),
+    (Get-Content "$ProjectRoot\.secrets\minio_root_password"),
+    (Get-Content "$ProjectRoot\.secrets\jwt_secret")
 
-    Write-Host "✅ .env file generated successfully."
+    $envPath = Join-Path $ProjectRoot ".env"
+    $envContent | Out-File -FilePath $envPath -Encoding utf8 -Force
+    Write-Host "Generated .env file at: $envPath"
 }
 else {
     Copy-Item "$ProjectRoot\docker-compose.yml.prod" "$ProjectRoot\docker-compose.yml" -Force
     Remove-Item "$ProjectRoot\.env" -Force -ErrorAction SilentlyContinue
-    Write-Host "🐳 Using docker-compose.yml.prod (no .env created)"
+    Write-Host "Using docker-compose.yml.prod"
 }
 
 # === Certificates ===
 $CertScript = "$ScriptDir\install-certificates.ps1"
 if (Test-Path $CertScript) {
-    Write-Host "🔒 Running certificate installation..."
+    Write-Host "Generating certificates..."
     & $CertScript
 } else {
-    Write-Host "⚠️ No certificate script found for Windows."
+    Write-Host "No certificate script found for Windows."
 }
 
 # === Start Docker stack ===
-Write-Host "`n🚢 Starting Docker stack (mode: $Mode)..."
+Write-Host "Starting Docker stack..."
 docker compose up -d --build
 
-Write-Host "`n✅ Stack is running successfully!"
-Write-Host "🌐 Web: http://localhost"
-Write-Host "🗃️  MinIO Console: http://localhost:9001"
-Write-Host "🔐 Secrets in: $ProjectRoot\.secrets"
-Write-Host "⚙️  Backend running from: backend/app.js"
+Write-Host ""
+Write-Host "========================================="
+Write-Host "Stack is running successfully!"
+Write-Host "Web: http://localhost"
+Write-Host "MinIO Console: http://localhost:9001"
+Write-Host "Secrets folder: $ProjectRoot\.secrets"
+Write-Host "App file: backend/app.js"
+Write-Host "========================================="

@@ -1,50 +1,101 @@
+# ================================================================
+# install-certificates.ps1 – Windows SSL setup (Arepabuelas Stack)
+# Compatible con PowerShell 5/7 y UTF-8 sin BOM
+# ================================================================
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Resolve-Path "$ScriptDir\..\.."
-$CertsDir = "$ProjectRoot\certs"
+$CertsDir = Join-Path $ProjectRoot "certs"
 
-Write-Host "🔐 Generating certificates in $CertsDir..."
-
+Write-Host "Generating SSL certificates in: $CertsDir"
 New-Item -ItemType Directory -Force -Path "$CertsDir\ca", "$CertsDir\nginx", "$CertsDir\backend", "$CertsDir\db", "$CertsDir\minio" | Out-Null
 
-# Root CA
-Write-Host "Creating Root CA..."
-openssl genrsa -out "$CertsDir\ca\rootCA.key" 4096
-openssl req -x509 -new -nodes -key "$CertsDir\ca\rootCA.key" -sha256 -days 1825 `
-    -out "$CertsDir\ca\rootCA.crt" `
-    -subj "/C=CO/ST=Bogota/O=Ingenieria_del_Chorizo/CN=RootCA"
+# --- Check for OpenSSL ---
+if (-not (Get-Command "openssl" -ErrorAction SilentlyContinue)) {
+    Write-Host "ERROR: OpenSSL not found. Install it and add to PATH."
+    exit 1
+}
 
-Function New-Cert {
-    param($Name, $CN, $SANs)
-    $Dir = "$CertsDir\$Name"
-    $SANList = ($SANs -join ", ")
-    Write-Host "Generating cert for $Name ($CN, SAN=$SANList)"
-    openssl genrsa -out "$Dir\$Name.key" 2048
-    $Config = "$Dir\$Name.conf"
-@"
+# --- Root CA ---
+$RootCAKey = "$CertsDir\ca\rootCA.key"
+$RootCACrt = "$CertsDir\ca\rootCA.crt"
+
+if (-not (Test-Path $RootCAKey -and (Test-Path $RootCACrt))) {
+    Write-Host "Creating Root CA..."
+    & openssl genrsa -out $RootCAKey 4096
+    & openssl req -x509 -new -nodes -key $RootCAKey -sha256 -days 1825 `
+        -out $RootCACrt -subj "/C=CO/ST=Cundinamarca/L=Chia/O=Arepabuelas/OU=Dev/CN=Arepabuelas Root CA"
+} else {
+    Write-Host "Root CA already exists, skipping."
+}
+
+# --- Function to create a certificate ---
+function New-Cert {
+    param (
+        [string]$Name,
+        [string]$CommonName,
+        [string[]]$AltNames
+    )
+
+    $Dir = Join-Path $CertsDir $Name
+    $Key = "$Dir\$Name.key"
+    $Csr = "$Dir\$Name.csr"
+    $Crt = "$Dir\$Name.crt"
+    $Pem = "$Dir\$Name.pem"
+    $Conf = "$Dir\$Name.conf"
+
+    if (Test-Path $Crt) {
+        Write-Host "Certificate for $Name already exists, skipping."
+        return
+    }
+
+    Write-Host "Generating certificate for $Name (CN=$CommonName)..."
+
+    # Create OpenSSL config dynamically
+    $sanLines = ""
+    for ($i = 0; $i -lt $AltNames.Length; $i++) {
+        $sanLines += "DNS.$($i + 2) = $($AltNames[$i])`n"
+    }
+
+    $ConfigText = @"
 [req]
 distinguished_name = dn
 req_extensions = v3_req
 prompt = no
 [dn]
-CN = $CN
+CN = $CommonName
 [v3_req]
 keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 [alt_names]
-DNS.1 = $CN
-$(for ($i = 0; $i -lt $SANs.Length; $i++) { "DNS.$($i+2) = $($SANs[$i])" })
-"@ | Out-File $Config
-    openssl req -new -key "$Dir\$Name.key" -out "$Dir\$Name.csr" -config $Config
-    openssl x509 -req -in "$Dir\$Name.csr" -CA "$CertsDir\ca\rootCA.crt" -CAkey "$CertsDir\ca\rootCA.key" -CAcreateserial -out "$Dir\$Name.crt" -days 825 -sha256 -extfile $Config -extensions v3_req
-    cat "$Dir\$Name.crt" "$Dir\$Name.key" | Out-File "$Dir\$Name.pem" -Encoding ascii
-    Remove-Item "$Dir\$Name.csr", "$Config" -Force
+DNS.1 = $CommonName
+$sanLines
+"@
+
+    $ConfigText | Out-File -FilePath $Conf -Encoding ascii -Force
+
+    # Generate private key and CSR
+    & openssl genrsa -out $Key 2048
+    & openssl req -new -key $Key -out $Csr -config $Conf
+
+    # Sign with Root CA
+    & openssl x509 -req -in $Csr -CA $RootCACrt -CAkey $RootCAKey `
+        -CAcreateserial -out $Crt -days 825 -sha256 -extfile $Conf -extensions v3_req
+
+    # Combine into PEM for Node.js/MinIO use
+    Get-Content $Crt, $Key | Out-File $Pem -Encoding ascii
+
+    # Clean up intermediate files
+    Remove-Item $Csr, $Conf -Force
 }
 
-New-Cert "minio" "minio.local" @("minio", "minio.local")
-New-Cert "nginx" "nginx.local" @("nginx.local")
-New-Cert "backend" "backend.local" @("backend.local")
-New-Cert "db" "db.local" @("db.local")
+# --- Create service certificates ---
+New-Cert "nginx"   "localhost" @("nginx", "localhost", "127.0.0.1")
+New-Cert "backend" "backend"  @("backend", "localhost")
+New-Cert "db"      "db"       @("db", "localhost")
+New-Cert "minio"   "minio"    @("minio", "localhost")
 
-Write-Host "✅ Certificates generated at: $CertsDir"
+Write-Host ""
+Write-Host "Certificates generated successfully in: $CertsDir"
+Get-ChildItem -Recurse "$CertsDir" -Include *.crt | Select-Object FullName
