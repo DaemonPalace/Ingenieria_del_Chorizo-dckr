@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const expiresAt = sessionStorage.getItem("tokenExpiresAt");
   const now = Date.now();
 
-  // Si no hay token o expiró → redirigir inmediatamente
   if (!token || !role || !expiresAt || now > parseInt(expiresAt, 10)) {
     console.warn("⚠️ Sesión no válida o expirada. Redirigiendo a login...");
     sessionStorage.clear();
@@ -27,7 +26,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // Si el rol no es admin/superadmin → redirigir
   if (!["admin", "superadmin"].includes(role.toLowerCase())) {
     console.warn("⚠️ Rol no autorizado:", role);
     sessionStorage.clear();
@@ -35,7 +33,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // ✅ Si la sesión es válida → mostrar el panel
   document.body.style.display = "block";
   document.body.classList.add("loaded");
   console.log("✅ Sesión válida, mostrando panel...");
@@ -48,9 +45,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     Authorization: token ? `Bearer ${token}` : "",
   });
 
-  const logError = (msg, err) => {
-    console.error(`❌ ${msg}`, err);
-  };
+  const logError = (msg, err) => console.error(`❌ ${msg}`, err);
 
   // ==========================
   // 👥 GESTIÓN DE USUARIOS
@@ -71,13 +66,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const rolActual = u.rol?.toLowerCase() || "cliente";
         const aprobado = !!u.aprobado;
         const esSuperAdmin = rolActual === "superadmin";
-
-        // Solo roles disponibles para cambio
         const rolesDisponibles = ["cliente", "admin"];
-
         const tr = document.createElement("tr");
 
-        // 🔹 Columna de rol
         const rolHTML = esSuperAdmin
           ? `<span class="badge bg-secondary text-uppercase">${rolActual}</span>`
           : `
@@ -94,7 +85,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 .join("")}
             </select>`;
 
-        // 🔹 Columna de acciones
         let acciones = "";
         if (esSuperAdmin) {
           acciones = `<span class="text-muted">Sin acciones</span>`;
@@ -106,7 +96,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             : `<button class="btn btn-success btn-sm aprobar" data-id="${u.id_usuario}">
                  <i class="fas fa-user-check"></i> Aprobar
                </button>`;
-
           acciones = `
             ${btnAprobacion}
             <button class="btn btn-info btn-sm actualizar" data-id="${u.id_usuario}">
@@ -130,42 +119,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // ==========================
-  // 🎛️ EVENTOS DE BOTONES
+  // 🎛️ EVENTOS DE BOTONES USUARIOS
   // ==========================
   tablaClientesBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
     const id = btn.dataset.id;
-
     let endpoint = "";
     let method = "PUT";
     let mensaje = "";
 
-    // 🔹 APROBAR
     if (btn.classList.contains("aprobar")) {
       if (!confirm("¿Aprobar este usuario?")) return;
       endpoint = `${API_BASE}/users/${id}/approve`;
       mensaje = "✅ Usuario aprobado correctamente.";
-    }
-
-    // 🔹 DESACTIVAR
-    else if (btn.classList.contains("desactivar")) {
+    } else if (btn.classList.contains("desactivar")) {
       if (!confirm("¿Desactivar este usuario?")) return;
       endpoint = `${API_BASE}/users/${id}/deactivate`;
       mensaje = "⚠️ Usuario desactivado correctamente.";
-    }
-
-    // 🔹 ACTUALIZAR ROL
-    else if (btn.classList.contains("actualizar")) {
+    } else if (btn.classList.contains("actualizar")) {
       const select = document.querySelector(`.rol-select[data-id="${id}"]`);
       const nuevoRol = select ? select.value : null;
       if (!nuevoRol) return alert("❌ No se seleccionó ningún rol.");
       if (!confirm(`¿Actualizar rol a "${nuevoRol}"?`)) return;
-
       endpoint = `${API_BASE}/users/${id}/role`;
       method = "PUT";
       mensaje = "✅ Rol actualizado correctamente.";
-
       try {
         const res = await fetch(endpoint, {
           method,
@@ -180,17 +159,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         alert("❌ No se pudo actualizar el rol.");
       }
       return;
-    }
-
-    // 🔹 ELIMINAR
-    else if (btn.classList.contains("eliminar")) {
+    } else if (btn.classList.contains("eliminar")) {
       if (!confirm("¿Eliminar este usuario?")) return;
       endpoint = `${API_BASE}/users/${id}`;
       method = "DELETE";
       mensaje = "🗑️ Usuario eliminado correctamente.";
     }
 
-    // 🔹 Ejecución general (aprobación, desactivación, eliminación)
     try {
       await fetch(endpoint, {
         method,
@@ -246,13 +221,17 @@ document.addEventListener("DOMContentLoaded", async () => {
               style="width:60px;height:60px;object-fit:cover;"></td>
           <td>$${parseFloat(p.precio).toFixed(2)}</td>
           <td>${p.descripcion}</td>
-          <td>
-            <button class="btn btn-sm btn-warning edit-btn" data-id="${
+          <td class="text-center">
+            <button class="btn btn-warning btn-sm edit-btn" data-id="${
               p.id_producto
-            }">Editar</button>
-            <button class="btn btn-sm btn-danger delete-btn" data-id="${
+            }">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${
               p.id_producto
-            }">Eliminar</button>
+            }">
+              <i class="fas fa-trash"></i>
+            </button>
           </td>`;
         tablaProductosBody.appendChild(tr);
       });
@@ -260,6 +239,74 @@ document.addEventListener("DOMContentLoaded", async () => {
       logError("Error cargando productos:", err);
     }
   }
+
+  // 🆕 CREAR PRODUCTO
+  formProducto.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nombre = document.getElementById("nombreProducto").value.trim();
+    const precio = document.getElementById("precioProducto").value.trim();
+    const descripcion = document
+      .getElementById("descripcionProducto")
+      .value.trim();
+    const imagen = document.getElementById("imagenProducto").files[0];
+
+    if (!nombre || !precio || !descripcion || !imagen) {
+      alert("⚠️ Todos los campos son obligatorios.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("nombre", nombre);
+    formData.append("precio", precio);
+    formData.append("descripcion", descripcion);
+    formData.append("imagen", imagen);
+
+    try {
+      const res = await fetch(`${API_BASE}/products`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+
+      alert("✅ Producto creado exitosamente.");
+      formProducto.reset();
+      previewImagen.src = "";
+      previewImagen.classList.add("d-none");
+      await cargarProductos();
+    } catch (err) {
+      logError("Error creando producto:", err);
+      alert("❌ No se pudo crear el producto.");
+    }
+  });
+
+  // 🗑️ ELIMINAR PRODUCTO
+  tablaProductosBody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const id = btn.dataset.id;
+
+    if (btn.classList.contains("delete-btn")) {
+      if (!confirm("¿Eliminar este producto?")) return;
+      try {
+        const res = await fetch(`${API_BASE}/products/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        alert("🗑️ Producto eliminado correctamente.");
+        await cargarProductos();
+      } catch (err) {
+        logError("Error eliminando producto:", err);
+        alert("❌ No se pudo eliminar el producto.");
+      }
+    }
+  });
 
   // ==========================
   // 🚀 EJECUCIÓN DIRECTA
