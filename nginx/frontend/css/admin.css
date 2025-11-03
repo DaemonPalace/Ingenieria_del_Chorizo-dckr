@@ -238,3 +238,14 @@ body.loaded {
 .btn-warning i {
   margin-right: 4px;
 }
+
+.table-warning td {
+  background-color: #fff3cd !important;
+}
+
+.img-edit:hover {
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+}
+
