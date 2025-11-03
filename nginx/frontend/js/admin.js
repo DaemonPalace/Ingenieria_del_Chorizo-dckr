@@ -53,16 +53,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   // ==========================
-  // 👥 GESTIÓN DE CLIENTES
+  // 👥 GESTIÓN DE USUARIOS
   // ==========================
   const tablaClientesBody = document.querySelector("#tablaClientes tbody");
 
   async function cargarUsuarios() {
     try {
-      const res = await fetch(`${API_BASE}/users?rol=cliente`, {
-        headers: headers(),
-      });
-
+      const res = await fetch(`${API_BASE}/users`, { headers: headers() });
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
       const usuarios = await res.json();
       console.log(`✅ Usuarios cargados: ${usuarios.length}`);
@@ -71,29 +68,60 @@ document.addEventListener("DOMContentLoaded", async () => {
       usuarios.sort((a, b) => a.aprobado - b.aprobado);
 
       usuarios.forEach((u) => {
+        const rolActual = u.rol?.toLowerCase() || "cliente";
+        const aprobado = !!u.aprobado;
+        const esSuperAdmin = rolActual === "superadmin";
+
+        // Solo roles disponibles para cambio
+        const rolesDisponibles = ["cliente", "admin"];
+
         const tr = document.createElement("tr");
+
+        // 🔹 Columna de rol
+        const rolHTML = esSuperAdmin
+          ? `<span class="badge bg-secondary text-uppercase">${rolActual}</span>`
+          : `
+            <select class="form-select form-select-sm rol-select" data-id="${
+              u.id_usuario
+            }">
+              ${rolesDisponibles
+                .map(
+                  (r) =>
+                    `<option value="${r}" ${
+                      r === rolActual ? "selected" : ""
+                    }>${r}</option>`
+                )
+                .join("")}
+            </select>`;
+
+        // 🔹 Columna de acciones
+        let acciones = "";
+        if (esSuperAdmin) {
+          acciones = `<span class="text-muted">Sin acciones</span>`;
+        } else {
+          const btnAprobacion = aprobado
+            ? `<button class="btn btn-warning btn-sm desactivar" data-id="${u.id_usuario}">
+                 <i class="fas fa-user-slash"></i> Desactivar
+               </button>`
+            : `<button class="btn btn-success btn-sm aprobar" data-id="${u.id_usuario}">
+                 <i class="fas fa-user-check"></i> Aprobar
+               </button>`;
+
+          acciones = `
+            ${btnAprobacion}
+            <button class="btn btn-info btn-sm actualizar" data-id="${u.id_usuario}">
+              <i class="fas fa-sync-alt"></i> Actualizar Rol
+            </button>
+            <button class="btn btn-danger btn-sm eliminar" data-id="${u.id_usuario}">
+              <i class="fas fa-trash"></i> Eliminar
+            </button>`;
+        }
+
         tr.innerHTML = `
           <td>${u.nombre}</td>
           <td>${u.correo}</td>
-          <td><span class="badge bg-${
-            u.rol === "admin" ? "warning" : "secondary"
-          }">${u.rol}</span></td>
-          <td class="text-center">
-            ${
-              u.aprobado
-                ? `<button class="btn btn-warning btn-sm desactivar" data-id="${u.id_usuario}">
-                     <i class="fas fa-user-slash"></i> Desactivar
-                   </button>`
-                : `<button class="btn btn-success btn-sm aprobar" data-id="${u.id_usuario}">
-                     <i class="fas fa-user-check"></i> Aprobar
-                   </button>`
-            }
-            <button class="btn btn-danger btn-sm eliminar" data-id="${
-              u.id_usuario
-            }">
-              <i class="fas fa-trash"></i> Eliminar
-            </button>
-          </td>`;
+          <td>${rolHTML}</td>
+          <td class="text-center">${acciones}</td>`;
         tablaClientesBody.appendChild(tr);
       });
     } catch (err) {
@@ -101,30 +129,68 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // Manejo de botones de usuario
+  // ==========================
+  // 🎛️ EVENTOS DE BOTONES
+  // ==========================
   tablaClientesBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
     const id = btn.dataset.id;
+
     let endpoint = "";
     let method = "PUT";
     let mensaje = "";
 
+    // 🔹 APROBAR
     if (btn.classList.contains("aprobar")) {
-      if (!confirm("¿Aprobar este cliente?")) return;
+      if (!confirm("¿Aprobar este usuario?")) return;
       endpoint = `${API_BASE}/users/${id}/approve`;
       mensaje = "✅ Usuario aprobado correctamente.";
-    } else if (btn.classList.contains("desactivar")) {
-      if (!confirm("¿Desactivar este cliente?")) return;
+    }
+
+    // 🔹 DESACTIVAR
+    else if (btn.classList.contains("desactivar")) {
+      if (!confirm("¿Desactivar este usuario?")) return;
       endpoint = `${API_BASE}/users/${id}/deactivate`;
       mensaje = "⚠️ Usuario desactivado correctamente.";
-    } else if (btn.classList.contains("eliminar")) {
+    }
+
+    // 🔹 ACTUALIZAR ROL
+    else if (btn.classList.contains("actualizar")) {
+      const select = document.querySelector(`.rol-select[data-id="${id}"]`);
+      const nuevoRol = select ? select.value : null;
+      if (!nuevoRol) return alert("❌ No se seleccionó ningún rol.");
+      if (!confirm(`¿Actualizar rol a "${nuevoRol}"?`)) return;
+
+      endpoint = `${API_BASE}/users/${id}/role`;
+      method = "PUT";
+      mensaje = "✅ Rol actualizado correctamente.";
+
+      try {
+        const res = await fetch(endpoint, {
+          method,
+          headers: headers(),
+          body: JSON.stringify({ rol: nuevoRol }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        alert(mensaje);
+        await cargarUsuarios();
+      } catch (err) {
+        logError("Error actualizando rol:", err);
+        alert("❌ No se pudo actualizar el rol.");
+      }
+      return;
+    }
+
+    // 🔹 ELIMINAR
+    else if (btn.classList.contains("eliminar")) {
       if (!confirm("¿Eliminar este usuario?")) return;
       endpoint = `${API_BASE}/users/${id}`;
       method = "DELETE";
       mensaje = "🗑️ Usuario eliminado correctamente.";
     }
 
+    // 🔹 Ejecución general (aprobación, desactivación, eliminación)
     try {
       await fetch(endpoint, {
         method,
@@ -135,7 +201,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             : undefined,
       });
       alert(mensaje);
-      cargarUsuarios();
+      await cargarUsuarios();
     } catch (err) {
       alert("❌ Error procesando la solicitud.");
       logError("Error en operación de usuario:", err);

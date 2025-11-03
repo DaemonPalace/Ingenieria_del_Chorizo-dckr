@@ -206,3 +206,35 @@ body.loaded {
   font-size: 1rem;
   letter-spacing: 1px;
 }
+
+/* Select de rol */
+.rol-select {
+  font-weight: bold;
+  text-transform: capitalize;
+  text-align: center;
+  color: #222;
+}
+
+.rol-select option[value="cliente"] {
+  color: #2d6a4f;
+}
+
+.rol-select option[value="admin"] {
+  color: #c08400;
+}
+
+/* Botones */
+.btn-info {
+  background-color: #1982c4;
+  border: none;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #1268a0;
+}
+
+.btn-success i,
+.btn-warning i {
+  margin-right: 4px;
+}
