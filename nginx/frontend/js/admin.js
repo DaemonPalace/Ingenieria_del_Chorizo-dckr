@@ -47,6 +47,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const logError = (msg, err) => console.error(`❌ ${msg}`, err);
 
+  // Normaliza URLs de imagen (corrige http → https)
+  const fixImageURL = (url) => {
+    if (!url) return "/img/no-image.png";
+    return url.replace("http://", "https://");
+  };
+
   // ==========================
   // 👥 GESTIÓN DE USUARIOS
   // ==========================
@@ -190,6 +196,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const formProducto = document.getElementById("formProducto");
   const previewImagen = document.getElementById("previewImagen");
 
+  // 🖼️ Vista previa antes de subir
   document.getElementById("imagenProducto").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -205,6 +212,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // 📦 Cargar productos existentes
   async function cargarProductos() {
     try {
       const res = await fetch(`${API_BASE}/products`, { headers: headers() });
@@ -217,8 +225,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${p.nombre}</td>
-          <td><img src="${p.imagen_url}" alt="${p.nombre}" class="img-thumbnail"
-              style="width:60px;height:60px;object-fit:cover;"></td>
+          <td>
+            <img src="${fixImageURL(p.imagen_url)}"
+                 alt="${p.nombre}"
+                 class="img-thumbnail"
+                 style="width:60px;height:60px;object-fit:cover;"
+                 onerror="this.src='/img/no-image.png'">
+          </td>
           <td>$${parseFloat(p.precio).toFixed(2)}</td>
           <td>${p.descripcion}</td>
           <td class="text-center">

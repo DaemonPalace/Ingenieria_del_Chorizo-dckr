@@ -237,11 +237,9 @@ app.post("/api/register", upload.single("foto"), async (req, res, next) => {
       console.error("Validation failed: Missing required fields", {
         missingFields,
       });
-      return res
-        .status(400)
-        .json({
-          error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
-        });
+      return res.status(400).json({
+        error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+      });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
       console.error("Validation failed: Invalid email", { correo });
@@ -282,7 +280,10 @@ app.post("/api/register", upload.single("foto"), async (req, res, next) => {
       });
       throw new Error(`Failed to upload photo to MinIO: ${err.message}`);
     }
-    const fotoUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-users/${fileName}`;
+    // ✅ Construir URL pública segura
+    const fotoUrl = `${process.env.MINIO_PROTOCOL || "https"}://${
+      process.env.MINIO_PUBLIC_HOST || "localhost"
+    }:${process.env.MINIO_PORT || 9000}/arepabuelas-users/${fileName}`;
     console.log("Generated photo URL:", fotoUrl);
     console.log("Inserting user into database:", {
       nombre,
@@ -734,7 +735,9 @@ app.post(
           "Content-Type": imagen.mimetype,
         }
       );
-      const imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
+      const imagenUrl = `${process.env.MINIO_PROTOCOL || "https"}://${
+        process.env.MINIO_PUBLIC_HOST || "localhost"
+      }:${process.env.MINIO_PORT || 9000}/arepabuelas-products/${fileName}`;
       // Insert into DB (assuming Producto table: id_producto, nombre, precio, descripcion, imagen_url)
       const query = `
       INSERT INTO Producto (nombre, precio, descripcion, imagen_url)
@@ -806,7 +809,9 @@ app.put(
             "Content-Type": imagen.mimetype,
           }
         );
-        imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
+        imagenUrl = `${process.env.MINIO_PROTOCOL || "https"}://${
+          process.env.MINIO_PUBLIC_HOST || "localhost"
+        }:${process.env.MINIO_PORT || 9000}/arepabuelas-products/${fileName}`;
       }
       // Update DB
       const query = `
