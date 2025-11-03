@@ -1,144 +1,166 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  const loader = document.getElementById("loader");
-  const loaderText = document.getElementById("loader-text");
-  const API_BASE = "http://localhost:3000";
-  let editingProductId = null;
+  console.log("🚀 Panel de administrador cargado");
 
-  // Mostrar mensaje en loader
-  const showLoaderMsg = (msg) => {
-    loaderText.textContent = msg;
-  };
+  // 🔒 Oculta el contenido por defecto (evita parpadeos)
+  document.body.style.display = "none";
+
+  // ==========================
+  // 🌐 CONFIGURACIÓN AUTOMÁTICA DEL BACKEND
+  // ==========================
+  const API_BASE = `${window.location.origin}/api`;
+  console.log("🔗 Conectando con API_BASE =", API_BASE);
 
   // ==========================
   // 🔐 VALIDACIÓN DE SESIÓN
   // ==========================
-  document.body.style.visibility = "hidden";
-  document.body.style.opacity = "0";
-  showLoaderMsg("Verificando sesión...");
-
   const token = sessionStorage.getItem("authToken");
+  const email = sessionStorage.getItem("userEmail");
   const role = sessionStorage.getItem("userRole");
   const expiresAt = sessionStorage.getItem("tokenExpiresAt");
-  const email = sessionStorage.getItem("userEmail");
   const now = Date.now();
 
   if (!token || !role || !expiresAt || now > parseInt(expiresAt, 10)) {
+    console.warn("⚠️ Sesión no válida o expirada. Redirigiendo a login...");
     sessionStorage.clear();
     window.location.replace("/login.html");
     return;
   }
 
-  if (!["admin", "superadmin"].includes(role)) {
+  if (!["admin", "superadmin"].includes(role.toLowerCase())) {
+    console.warn("⚠️ Rol no autorizado:", role);
     sessionStorage.clear();
     window.location.replace("/index.html");
     return;
   }
 
-  // Mostrar panel tras validación
-  setTimeout(() => {
-    loader.classList.add("fade-out");
-    document.body.style.visibility = "visible";
-    document.body.style.opacity = "1";
-  }, 500);
-
-  const info = document.getElementById("user-info");
-  if (info && email) info.textContent = `👋 Bienvenido, ${email} (${role})`;
-
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      sessionStorage.clear();
-      window.location.replace("/login.html");
-    });
-  }
-
-  // Expiración automática
-  setInterval(() => {
-    const exp = parseInt(sessionStorage.getItem("tokenExpiresAt"), 10);
-    if (Date.now() > exp) {
-      alert("⚠️ Tu sesión ha expirado. Inicia sesión nuevamente.");
-      sessionStorage.clear();
-      window.location.replace("/login.html");
-    }
-  }, 60000);
-
-  const headers = () => ({
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  });
+  document.body.style.display = "block";
+  document.body.classList.add("loaded");
+  console.log("✅ Sesión válida, mostrando panel...");
 
   // ==========================
-  // 👥 GESTIÓN DE CLIENTES
+  // 🔧 FUNCIONES AUXILIARES
+  // ==========================
+  const headers = () => ({
+    "Content-Type": "application/json",
+    Authorization: token ? `Bearer ${token}` : "",
+  });
+
+  const logError = (msg, err) => console.error(`❌ ${msg}`, err);
+
+  // Normaliza URLs de imagen
+  const fixImageURL = (url) =>
+    !url ? "/img/no-image.png" : url.replace("http://", "https://");
+
+  // ==========================
+  // 👥 GESTIÓN DE USUARIOS
   // ==========================
   const tablaClientesBody = document.querySelector("#tablaClientes tbody");
 
   async function cargarUsuarios() {
-    showLoaderMsg("Cargando usuarios...");
     try {
-      const res = await fetch(`${API_BASE}/api/users?rol=cliente`, {
-        headers: headers(),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await fetch(`${API_BASE}/users`, { headers: headers() });
+      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
       const usuarios = await res.json();
+      console.log(`✅ Usuarios cargados: ${usuarios.length}`);
 
       tablaClientesBody.innerHTML = "";
       usuarios.sort((a, b) => a.aprobado - b.aprobado);
 
       usuarios.forEach((u) => {
+        const rolActual = u.rol?.toLowerCase() || "cliente";
+        const aprobado = !!u.aprobado;
+        const esSuperAdmin = rolActual === "superadmin";
+        const rolesDisponibles = ["cliente", "admin"];
         const tr = document.createElement("tr");
+
+        const rolHTML = esSuperAdmin
+          ? `<span class="badge bg-secondary text-uppercase">${rolActual}</span>`
+          : `
+            <select class="form-select form-select-sm rol-select" data-id="${
+              u.id_usuario
+            }">
+              ${rolesDisponibles
+                .map(
+                  (r) =>
+                    `<option value="${r}" ${
+                      r === rolActual ? "selected" : ""
+                    }>${r}</option>`
+                )
+                .join("")}
+            </select>`;
+
+        let acciones = "";
+        if (esSuperAdmin) {
+          acciones = `<span class="text-muted">Sin acciones</span>`;
+        } else {
+          const btnAprobacion = aprobado
+            ? `<button class="btn btn-warning btn-sm desactivar" data-id="${u.id_usuario}">
+                 <i class="fas fa-user-slash"></i> Desactivar
+               </button>`
+            : `<button class="btn btn-success btn-sm aprobar" data-id="${u.id_usuario}">
+                 <i class="fas fa-user-check"></i> Aprobar
+               </button>`;
+          acciones = `
+            ${btnAprobacion}
+            <button class="btn btn-info btn-sm actualizar" data-id="${u.id_usuario}">
+              <i class="fas fa-sync-alt"></i> Actualizar Rol
+            </button>
+            <button class="btn btn-danger btn-sm eliminar" data-id="${u.id_usuario}">
+              <i class="fas fa-trash"></i> Eliminar
+            </button>`;
+        }
+
         tr.innerHTML = `
           <td>${u.nombre}</td>
           <td>${u.correo}</td>
-          <td><span class="badge bg-${
-            u.rol === "admin" ? "warning" : "secondary"
-          }">${u.rol}</span></td>
-          <td class="text-center">
-            ${
-              u.aprobado
-                ? `<button class="btn btn-warning btn-sm desactivar" data-id="${u.id_usuario}">
-                     <i class="fas fa-user-slash"></i> Desactivar
-                   </button>`
-                : `<button class="btn btn-success btn-sm aprobar" data-id="${u.id_usuario}">
-                     <i class="fas fa-user-check"></i> Aprobar
-                   </button>`
-            }
-            <button class="btn btn-danger btn-sm eliminar" data-id="${
-              u.id_usuario
-            }">
-              <i class="fas fa-trash"></i> Eliminar
-            </button>
-          </td>
-        `;
+          <td>${rolHTML}</td>
+          <td class="text-center">${acciones}</td>`;
         tablaClientesBody.appendChild(tr);
       });
-
-      showLoaderMsg("Cargando productos...");
     } catch (err) {
-      console.error("Error cargando usuarios:", err);
-      showLoaderMsg("❌ Error al cargar usuarios");
+      logError("Error cargando usuarios:", err);
     }
   }
 
+  // 🎛️ EVENTOS DE USUARIOS
   tablaClientesBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
-
     const id = btn.dataset.id;
     let endpoint = "";
     let method = "PUT";
     let mensaje = "";
 
     if (btn.classList.contains("aprobar")) {
-      if (!confirm("¿Aprobar este cliente?")) return;
-      endpoint = `${API_BASE}/api/users/${id}/approve`;
+      if (!confirm("¿Aprobar este usuario?")) return;
+      endpoint = `${API_BASE}/users/${id}/approve`;
       mensaje = "✅ Usuario aprobado correctamente.";
     } else if (btn.classList.contains("desactivar")) {
-      if (!confirm("¿Desactivar este cliente?")) return;
-      endpoint = `${API_BASE}/api/users/${id}/deactivate`;
+      if (!confirm("¿Desactivar este usuario?")) return;
+      endpoint = `${API_BASE}/users/${id}/deactivate`;
       mensaje = "⚠️ Usuario desactivado correctamente.";
+    } else if (btn.classList.contains("actualizar")) {
+      const select = document.querySelector(`.rol-select[data-id="${id}"]`);
+      const nuevoRol = select ? select.value : null;
+      if (!nuevoRol) return alert("❌ No se seleccionó ningún rol.");
+      if (!confirm(`¿Actualizar rol a "${nuevoRol}"?`)) return;
+      endpoint = `${API_BASE}/users/${id}/role`;
+      try {
+        const res = await fetch(endpoint, {
+          method,
+          headers: headers(),
+          body: JSON.stringify({ rol: nuevoRol }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        alert(mensaje);
+        await cargarUsuarios();
+      } catch (err) {
+        logError("Error actualizando rol:", err);
+      }
+      return;
     } else if (btn.classList.contains("eliminar")) {
       if (!confirm("¿Eliminar este usuario?")) return;
-      endpoint = `${API_BASE}/api/users/${id}`;
+      endpoint = `${API_BASE}/users/${id}`;
       method = "DELETE";
       mensaje = "🗑️ Usuario eliminado correctamente.";
     }
@@ -153,22 +175,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             : undefined,
       });
       alert(mensaje);
-      cargarUsuarios();
+      await cargarUsuarios();
     } catch (err) {
-      alert("❌ Error procesando la solicitud.");
+      logError("Error en operación de usuario:", err);
     }
   });
-
-  await cargarUsuarios();
 
   // ==========================
   // 🛒 GESTIÓN DE PRODUCTOS
   // ==========================
-  const formProducto = document.getElementById("formProducto");
   const tablaProductosBody = document.querySelector("#tablaProductos tbody");
+  const formProducto = document.getElementById("formProducto");
   const previewImagen = document.getElementById("previewImagen");
 
-  // Vista previa de imagen
+  // 🖼️ Vista previa antes de subir
   document.getElementById("imagenProducto").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -184,43 +204,186 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // 📦 Cargar productos existentes
   async function cargarProductos() {
-    showLoaderMsg("Cargando productos...");
     try {
-      const res = await fetch(`${API_BASE}/api/products`, {
-        headers: headers(),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await fetch(`${API_BASE}/products`, { headers: headers() });
+      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
       const productos = await res.json();
+      console.log(`✅ Productos cargados: ${productos.length}`);
 
       tablaProductosBody.innerHTML = "";
       productos.forEach((p) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${p.nombre}</td>
-          <td><img src="${p.imagen_url}" alt="${
-          p.nombre
-        }" class="img-thumbnail" style="width:60px;height:60px;object-fit:cover;"></td>
-          <td>$${parseFloat(p.precio).toFixed(2)}</td>
-          <td>${p.descripcion}</td>
           <td>
-            <button class="btn btn-sm btn-warning edit-btn" data-id="${
-              p.id_producto
-            }">Editar</button>
-            <button class="btn btn-sm btn-danger delete-btn" data-id="${
-              p.id_producto
-            }">Eliminar</button>
+            <img src="${fixImageURL(p.imagen_url)}"
+                 alt="${p.nombre}"
+                 class="img-thumbnail"
+                 style="width:60px;height:60px;object-fit:cover;"
+                 onerror="this.src='/img/no-image.png'">
           </td>
-        `;
+          <td>${parseFloat(p.precio).toFixed(2)}</td>
+          <td>${p.descripcion}</td>
+          <td class="text-center">
+            <button class="btn btn-warning btn-sm edit-btn" data-id="${
+              p.id_producto
+            }">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-danger btn-sm delete-btn" data-id="${
+              p.id_producto
+            }">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>`;
         tablaProductosBody.appendChild(tr);
       });
-
-      loader.classList.add("fade-out");
     } catch (err) {
-      console.error("Error cargando productos:", err);
-      showLoaderMsg("❌ Error al cargar productos");
+      logError("Error cargando productos:", err);
     }
   }
 
+  // 🆕 CREAR PRODUCTO
+  formProducto.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const nombre = document.getElementById("nombreProducto").value.trim();
+    const precioText = document
+      .getElementById("precioProducto")
+      .value.trim()
+      .replace(/[^\d.-]/g, "");
+    const precio = parseFloat(precioText);
+    const descripcion = document
+      .getElementById("descripcionProducto")
+      .value.trim();
+    const imagen = document.getElementById("imagenProducto").files[0];
+
+    if (!nombre || !precio || !descripcion || !imagen) {
+      alert("⚠️ Todos los campos son obligatorios.");
+      return;
+    }
+
+    if (isNaN(precio) || precio <= 0) {
+      alert("⚠️ El precio debe ser un número positivo.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("nombre", nombre);
+    formData.append("precio", precio);
+    formData.append("descripcion", descripcion);
+    formData.append("imagen", imagen);
+
+    try {
+      const res = await fetch(`${API_BASE}/products`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      alert("✅ Producto creado exitosamente.");
+      formProducto.reset();
+      previewImagen.src = "";
+      previewImagen.classList.add("d-none");
+      await cargarProductos();
+    } catch (err) {
+      logError("Error creando producto:", err);
+    }
+  });
+
+  // 🗑️ / ✏️ / 💾 / ❌ EVENTOS DE PRODUCTOS
+  tablaProductosBody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const tr = btn.closest("tr");
+
+    // ===== ELIMINAR =====
+    if (btn.classList.contains("delete-btn")) {
+      if (!confirm("¿Eliminar este producto?")) return;
+      try {
+        const res = await fetch(`${API_BASE}/products/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        alert("🗑️ Producto eliminado correctamente.");
+        await cargarProductos();
+      } catch (err) {
+        logError("Error eliminando producto:", err);
+      }
+      return;
+    }
+
+    // ===== EDITAR =====
+    if (btn.classList.contains("edit-btn")) {
+      const celdas = tr.querySelectorAll("td");
+      celdas[0].contentEditable = "true"; // nombre
+      celdas[2].contentEditable = "true"; // precio
+      celdas[3].contentEditable = "true"; // descripción
+      tr.classList.add("table-warning");
+
+      // Reemplaza botones por Confirmar y Cancelar
+      tr.querySelector(".text-center").innerHTML = `
+        <button class="btn btn-success btn-sm save-btn" data-id="${id}">
+          <i class="fas fa-check"></i> Confirmar
+        </button>
+        <button class="btn btn-secondary btn-sm cancel-btn" data-id="${id}">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      `;
+      return;
+    }
+
+    // ===== CONFIRMAR CAMBIOS =====
+    if (btn.classList.contains("save-btn")) {
+      const nombre = tr.children[0].innerText.trim();
+      const precioText = tr.children[2].innerText
+        .trim()
+        .replace(/[^\d.-]/g, "");
+      const precio = parseFloat(precioText);
+      const descripcion = tr.children[3].innerText.trim();
+
+      if (!nombre || !descripcion || isNaN(precio) || precio <= 0) {
+        alert(
+          "⚠️ Los campos no pueden estar vacíos y el precio debe ser positivo."
+        );
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("nombre", nombre);
+      formData.append("precio", precio);
+      formData.append("descripcion", descripcion);
+
+      try {
+        const res = await fetch(`${API_BASE}/products/${id}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (!res.ok) throw new Error(await res.text());
+        alert("✅ Producto actualizado correctamente.");
+        await cargarProductos();
+      } catch (err) {
+        logError("Error actualizando producto:", err);
+      }
+      return;
+    }
+
+    // ===== CANCELAR EDICIÓN =====
+    if (btn.classList.contains("cancel-btn")) {
+      await cargarProductos(); // recarga la tabla sin cambios
+      return;
+    }
+  });
+
+  // ==========================
+  // 🚀 EJECUCIÓN DIRECTA
+  // ==========================
+  await cargarUsuarios();
   await cargarProductos();
+  console.log("✅ Panel listo.");
 });

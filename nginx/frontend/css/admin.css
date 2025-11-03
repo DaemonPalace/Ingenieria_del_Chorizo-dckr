@@ -1,8 +1,20 @@
-/* Estilo general */
+/* ===============================
+   OCULTAR COMPLETAMENTE EL PANEL HASTA VALIDAR SESIÓN
+   =============================== */
 body {
-  font-family: 'Anton', sans-serif, 'Questrial', sans-serif;
-  background-color: #f9f3e3;
+  display: none !important; /* 🚫 Totalmente oculto por defecto */
+  opacity: 0;
+  visibility: hidden;
 }
+
+/* Cuando la sesión es válida, el JS aplica esto */
+body.loaded {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease-in;
+}
+
 
 /* Sidebar */
 .sidebar {
@@ -194,3 +206,46 @@ body {
   font-size: 1rem;
   letter-spacing: 1px;
 }
+
+/* Select de rol */
+.rol-select {
+  font-weight: bold;
+  text-transform: capitalize;
+  text-align: center;
+  color: #222;
+}
+
+.rol-select option[value="cliente"] {
+  color: #2d6a4f;
+}
+
+.rol-select option[value="admin"] {
+  color: #c08400;
+}
+
+/* Botones */
+.btn-info {
+  background-color: #1982c4;
+  border: none;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #1268a0;
+}
+
+.btn-success i,
+.btn-warning i {
+  margin-right: 4px;
+}
+
+.table-warning td {
+  background-color: #fff3cd !important;
+}
+
+.img-edit:hover {
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+}
+
