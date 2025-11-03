@@ -237,9 +237,11 @@ app.post("/api/register", upload.single("foto"), async (req, res, next) => {
       console.error("Validation failed: Missing required fields", {
         missingFields,
       });
-      return res.status(400).json({
-        error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
-      });
+      return res
+        .status(400)
+        .json({
+          error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+        });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
       console.error("Validation failed: Invalid email", { correo });
@@ -280,10 +282,7 @@ app.post("/api/register", upload.single("foto"), async (req, res, next) => {
       });
       throw new Error(`Failed to upload photo to MinIO: ${err.message}`);
     }
-    // ✅ Construir URL pública segura
-    const fotoUrl = `${process.env.MINIO_PROTOCOL || "https"}://${
-      process.env.MINIO_PUBLIC_HOST || "localhost"
-    }:${process.env.MINIO_PORT || 9000}/arepabuelas-users/${fileName}`;
+    const fotoUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-users/${fileName}`;
     console.log("Generated photo URL:", fotoUrl);
     console.log("Inserting user into database:", {
       nombre,
@@ -444,195 +443,6 @@ app.put(
     }
   }
 );
-// PUT /api/users/:id/role - Cambiar rol (cliente o admin)
-app.put(
-  "/api/users/:id/role",
-  authenticateToken,
-  isAdmin,
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { rol } = req.body;
-
-      if (!rol) {
-        return res.status(400).json({ error: "Falta el campo 'rol'" });
-      }
-
-      // Solo permitir 'admin' o 'cliente'
-      if (!["admin", "cliente"].includes(rol.toLowerCase())) {
-        return res
-          .status(400)
-          .json({ error: "Rol inválido. Solo se permite 'admin' o 'cliente'." });
-      }
-
-      // Verificar si el usuario existe y que no sea superadmin
-      const target = await pool.query(
-        "SELECT rol FROM usuario WHERE id_usuario = $1",
-        [id]
-      );
-      if (target.rows.length === 0) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-      if (target.rows[0].rol === "superadmin") {
-        return res
-          .status(403)
-          .json({ error: "No se puede modificar el rol de un superadmin" });
-      }
-
-      // Actualizar el rol
-      const result = await pool.query(
-        `
-        UPDATE usuario
-        SET rol = $2
-        WHERE id_usuario = $1
-        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
-      `,
-        [id, rol]
-      );
-
-      res.json({
-        message: "Rol actualizado correctamente",
-        user: result.rows[0],
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-// PUT /api/users/:id/deactivate - Desactivar usuario
-app.put(
-  "/api/users/:id/deactivate",
-  authenticateToken,
-  isAdmin,
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-
-      // Verificar existencia del usuario
-      const checkUser = await pool.query(
-        "SELECT id_usuario FROM usuario WHERE id_usuario = $1",
-        [id]
-      );
-      if (checkUser.rows.length === 0) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-
-      // Actualizar aprobado a FALSE
-      const result = await pool.query(
-        `
-        UPDATE usuario
-        SET aprobado = FALSE
-        WHERE id_usuario = $1
-        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
-      `,
-        [id]
-      );
-
-      res.json({
-        message: "Usuario desactivado correctamente",
-        user: result.rows[0],
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-// PUT /api/users/:id/role - Cambiar rol (cliente o admin)
-app.put(
-  "/api/users/:id/role",
-  authenticateToken,
-  isAdmin,
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const { rol } = req.body;
-
-      if (!rol) {
-        return res.status(400).json({ error: "Falta el campo 'rol'" });
-      }
-
-      // Solo permitir 'admin' o 'cliente'
-      if (!["admin", "cliente"].includes(rol.toLowerCase())) {
-        return res
-          .status(400)
-          .json({ error: "Rol inválido. Solo se permite 'admin' o 'cliente'." });
-      }
-
-      // Verificar si el usuario existe y que no sea superadmin
-      const target = await pool.query(
-        "SELECT rol FROM usuario WHERE id_usuario = $1",
-        [id]
-      );
-      if (target.rows.length === 0) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-      if (target.rows[0].rol === "superadmin") {
-        return res
-          .status(403)
-          .json({ error: "No se puede modificar el rol de un superadmin" });
-      }
-
-      // Actualizar el rol
-      const result = await pool.query(
-        `
-        UPDATE usuario
-        SET rol = $2
-        WHERE id_usuario = $1
-        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
-      `,
-        [id, rol]
-      );
-
-      res.json({
-        message: "Rol actualizado correctamente",
-        user: result.rows[0],
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-// PUT /api/users/:id/deactivate - Desactivar usuario
-app.put(
-  "/api/users/:id/deactivate",
-  authenticateToken,
-  isAdmin,
-  async (req, res, next) => {
-    try {
-      const { id } = req.params;
-
-      // Verificar existencia del usuario
-      const checkUser = await pool.query(
-        "SELECT id_usuario FROM usuario WHERE id_usuario = $1",
-        [id]
-      );
-      if (checkUser.rows.length === 0) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-
-      // Actualizar aprobado a FALSE
-      const result = await pool.query(
-        `
-        UPDATE usuario
-        SET aprobado = FALSE
-        WHERE id_usuario = $1
-        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
-      `,
-        [id]
-      );
-
-      res.json({
-        message: "Usuario desactivado correctamente",
-        user: result.rows[0],
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
 
 // DELETE /api/users/:id - Delete a user
 app.delete(
@@ -735,9 +545,7 @@ app.post(
           "Content-Type": imagen.mimetype,
         }
       );
-      const imagenUrl = `${process.env.MINIO_PROTOCOL || "https"}://${
-        process.env.MINIO_PUBLIC_HOST || "localhost"
-      }:${process.env.MINIO_PORT || 9000}/arepabuelas-products/${fileName}`;
+      const imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
       // Insert into DB (assuming Producto table: id_producto, nombre, precio, descripcion, imagen_url)
       const query = `
       INSERT INTO Producto (nombre, precio, descripcion, imagen_url)
@@ -758,8 +566,9 @@ app.post(
   }
 );
 
-// GET /api/products - List all products
-app.get("/api/products", authenticateToken, isAdmin, async (req, res, next) => {
+
+// GET /api/products - List all products (PUBLIC)
+app.get("/api/products", async (req, res, next) => {
   try {
     const result = await pool.query("SELECT * FROM Producto");
     res.json(result.rows);
@@ -809,9 +618,7 @@ app.put(
             "Content-Type": imagen.mimetype,
           }
         );
-        imagenUrl = `${process.env.MINIO_PROTOCOL || "https"}://${
-          process.env.MINIO_PUBLIC_HOST || "localhost"
-        }:${process.env.MINIO_PORT || 9000}/arepabuelas-products/${fileName}`;
+        imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
       }
       // Update DB
       const query = `
