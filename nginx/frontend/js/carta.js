@@ -1,4 +1,4 @@
-// carta.js — carga productos reales desde /api/products (sin productos de prueba locales)
+// carta.js — carga productos reales desde /api/public/products (sin token requerido)
 
 document.addEventListener("DOMContentLoaded", () => {
   const API_BASE = `${window.location.origin}/api`;
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const addToCart = (product) => {
     const cart = getCart();
-    const idx = cart.findIndex((i) => i.name === product.name);
+    const idx = cart.findIndex((i) => i.id === product.id);
     if (idx >= 0) {
       cart[idx].quantity = (cart[idx].quantity || 1) + 1;
     } else {
@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Renderizado de productos ---
   const render = (items) => {
     if (!$list) return;
+
     if (!items.length) {
       $list.innerHTML = `
         <p style="color:#fff;text-align:center;margin-top:2rem">
@@ -86,17 +87,13 @@ document.addEventListener("DOMContentLoaded", () => {
     price: Number(p.precio ?? p.price ?? 0),
     description: p.descripcion ?? p.description ?? "",
     image:
-      p.imagen_url ??
-      p.image_url ??
-      p.imagen ??
-      p.image ??
-      "/img/no-image.png",
+      p.imagen_url ?? p.image_url ?? p.imagen ?? p.image ?? "/img/no-image.png",
   });
 
-  // --- Fetch de productos reales desde el backend ---
+  // --- Fetch de productos reales desde el endpoint público ---
   const fetchProducts = async () => {
     try {
-      const res = await fetch(`${API_BASE}/products`, {
+      const res = await fetch(`${API_BASE}/public/products`, {
         headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -105,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return data.map(mapBackendProduct);
     } catch (err) {
       console.error("❌ Error cargando productos:", err);
-      return []; // No devuelve productos locales, solo lista vacía
+      return []; // Devuelve lista vacía si falla
     }
   };
 
