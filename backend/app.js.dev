@@ -444,6 +444,196 @@ app.put(
   }
 );
 
+// PUT /api/users/:id/role - Cambiar rol (cliente o admin)
+app.put(
+  "/api/users/:id/role",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { rol } = req.body;
+
+      if (!rol) {
+        return res.status(400).json({ error: "Falta el campo 'rol'" });
+      }
+
+      // Solo permitir 'admin' o 'cliente'
+      if (!["admin", "cliente"].includes(rol.toLowerCase())) {
+        return res
+          .status(400)
+          .json({ error: "Rol inválido. Solo se permite 'admin' o 'cliente'." });
+      }
+
+      // Verificar si el usuario existe y que no sea superadmin
+      const target = await pool.query(
+        "SELECT rol FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (target.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      if (target.rows[0].rol === "superadmin") {
+        return res
+          .status(403)
+          .json({ error: "No se puede modificar el rol de un superadmin" });
+      }
+
+      // Actualizar el rol
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET rol = $2
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id, rol]
+      );
+
+      res.json({
+        message: "Rol actualizado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// PUT /api/users/:id/deactivate - Desactivar usuario
+app.put(
+  "/api/users/:id/deactivate",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      // Verificar existencia del usuario
+      const checkUser = await pool.query(
+        "SELECT id_usuario FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (checkUser.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      // Actualizar aprobado a FALSE
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET aprobado = FALSE
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id]
+      );
+
+      res.json({
+        message: "Usuario desactivado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+// PUT /api/users/:id/role - Cambiar rol (cliente o admin)
+app.put(
+  "/api/users/:id/role",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { rol } = req.body;
+
+      if (!rol) {
+        return res.status(400).json({ error: "Falta el campo 'rol'" });
+      }
+
+      // Solo permitir 'admin' o 'cliente'
+      if (!["admin", "cliente"].includes(rol.toLowerCase())) {
+        return res
+          .status(400)
+          .json({ error: "Rol inválido. Solo se permite 'admin' o 'cliente'." });
+      }
+
+      // Verificar si el usuario existe y que no sea superadmin
+      const target = await pool.query(
+        "SELECT rol FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (target.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      if (target.rows[0].rol === "superadmin") {
+        return res
+          .status(403)
+          .json({ error: "No se puede modificar el rol de un superadmin" });
+      }
+
+      // Actualizar el rol
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET rol = $2
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id, rol]
+      );
+
+      res.json({
+        message: "Rol actualizado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// PUT /api/users/:id/deactivate - Desactivar usuario
+app.put(
+  "/api/users/:id/deactivate",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      // Verificar existencia del usuario
+      const checkUser = await pool.query(
+        "SELECT id_usuario FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (checkUser.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      // Actualizar aprobado a FALSE
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET aprobado = FALSE
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id]
+      );
+
+      res.json({
+        message: "Usuario desactivado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+
 // DELETE /api/users/:id - Delete a user
 app.delete(
   "/api/users/:id",
@@ -680,10 +870,6 @@ app.delete(
   }
 );
 
-app.listen(port, () => {
-  console.log(`Backend running on port ${port}`);
-});
-
 // Sirve imágenes de productos
 app.get("/api/images/products/:filename", async (req, res) => {
   const { filename } = req.params;
@@ -696,4 +882,8 @@ app.get("/api/images/products/:filename", async (req, res) => {
   } catch (err) {
     res.status(404).send("Imagen no encontrada");
   }
+});
+
+app.listen(port, () => {
+  console.log(`Backend running on port ${port}`);
 });
