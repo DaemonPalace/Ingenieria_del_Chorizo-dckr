@@ -1,4 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", () => {
+    console.warn("Usuario no aprobado — limpiando sesión temporal");
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("tokenExpiresAt");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("userEmail");
+    sessionStorage.removeItem("userName");
+  });
+
   const token = sessionStorage.getItem("noApprovedToken");
 
   if (!token) {
