@@ -6,6 +6,7 @@ body {
   padding: 0;
 }
 
+/* === BOTÓN VOLVER === */
 .back-btn {
   display: inline-block;
   background-color: #3C2E26;
@@ -14,7 +15,7 @@ body {
   font-family: 'Anton', sans-serif;
   padding: 10px 20px;
   border-radius: 5px;
-  margin: 20px;
+  margin: 25px 40px;
   transition: background 0.3s;
 }
 .back-btn:hover {
@@ -26,36 +27,39 @@ body {
 .perfil {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   background-color: #fff;
   border-radius: 10px;
-  margin: 0 auto 20px;
-  padding: 15px 25px;
-  max-width: 600px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  margin: 20px auto 30px;
+  padding: 20px 25px;
+  max-width: 700px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  gap: 20px;
 }
 .perfil-foto {
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
-  margin-right: 15px;
   border: 3px solid #D69E32;
 }
 .perfil h2 {
   font-family: 'Anton', sans-serif;
-  margin: 0;
+  margin: 0 0 5px;
+  font-size: 1.5rem;
 }
 .perfil p {
-  margin: 5px 0 0;
+  margin: 0;
+  color: #5a463a;
 }
 
 /* === CARRITO === */
 .carrito-container {
   max-width: 800px;
-  margin: 0 auto;
-  padding: 10px 20px;
+  margin: 0 auto 40px;
+  padding: 25px 30px;
   background-color: #fff;
   border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.25);
 }
 
 .carrito-item {
@@ -63,33 +67,35 @@ body {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid #ddd;
-  padding: 15px 0;
+  padding: 18px 0;
+  gap: 20px;
 }
 
 .carrito-item img {
-  width: 90px;
-  height: 90px;
+  width: 100px;
+  height: 100px;
   border-radius: 10px;
   object-fit: cover;
 }
 
 .item-info {
   flex: 1;
-  padding: 0 20px;
+  padding: 0 10px;
 }
 .item-info h3 {
   font-family: 'Anton', sans-serif;
-  margin: 0 0 5px;
+  margin: 0 0 6px;
 }
 .item-info p {
   margin: 0;
   color: #5a463a;
 }
 
-/* Controles de cantidad */
+/* === CONTROLES DE CANTIDAD === */
 .item-cantidad {
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 .item-cantidad button {
   background-color: #3C2E26;
@@ -107,40 +113,45 @@ body {
   color: #3C2E26;
 }
 .item-cantidad span {
-  width: 30px;
+  min-width: 30px;
   text-align: center;
   font-weight: bold;
-  margin: 0 5px;
 }
 
 /* === FOOTER === */
-.carrito-footer {
-  max-width: 800px;
-  margin: 30px auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+footer.footer {
+  margin-top: 50px;
   background-color: #3C2E26;
   color: #fff;
-  padding: 15px 25px;
-  border-radius: 10px;
+  padding: 30px 0;
 }
-.carrito-total {
-  font-family: 'Anton', sans-serif;
-  font-size: 1.3rem;
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 40px;
+  flex-wrap: wrap;
+  gap: 20px;
 }
-#btnPagar {
-  background-color: #D69E32;
+.footer-left, .footer-right {
+  flex: 1;
+  min-width: 250px;
+}
+.footer-left img {
+  width: 120px;
+  margin-bottom: 10px;
+}
+.footer-address p {
+  margin: 5px 0;
+}
+.footer-right h2 a {
   color: #fff;
-  border: none;
-  padding: 10px 25px;
-  border-radius: 6px;
-  font-family: 'Anton', sans-serif;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s;
+  text-decoration: none;
 }
-#btnPagar:hover {
-  background-color: #fff;
-  color: #3C2E26;
+.footer-social img {
+  width: 120px;
+  margin-top: 10px;
 }
+ 
