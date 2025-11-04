@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrito — ArepAbuelas</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Questrial&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/carrito.css">
+  <script src="./js/carrito.js" defer></script>
+</head>
+<body>
+  <a href="./carta.html" class="back-btn">← Seguir comprando</a>
+
+  <!-- 👤 Zona de perfil -->
+  <section class="perfil">
+    <img src="./img/perfil.png" alt="Foto de perfil" class="perfil-foto">
+    <div>
+      <h2 id="perfil-nombre">Cliente Ejemplo</h2>
+      <p id="perfil-rol">Rol: Cliente</p>
+    </div>
+  </section>
+
+  <!-- 🛒 Carrito -->
+  <main class="carrito-container" id="carrito-container">
+    <!-- El JS insertará aquí los productos -->
+  </main>
+
+  <!-- 💰 Total y botón de pago -->
+  <footer class="carrito-footer">
+    <div class="carrito-total">
+      <span>Total:</span>
+      <strong id="total-precio">$0</strong>
+    </div>
+    <button id="btnPagar">Pagar</button>
+  </footer>
+</body>
+</html>
