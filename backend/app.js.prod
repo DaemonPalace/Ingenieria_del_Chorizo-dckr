@@ -467,10 +467,10 @@ app.post('/api/products', authenticateToken, isAdmin, upload.single('imagen'), a
   }
 });
 
-// GET /api/products - List all products
-app.get('/api/products', authenticateToken, isAdmin, async (req, res, next) => {
+// GET /api/products - List all products (PUBLIC)
+app.get("/api/products", async (req, res, next) => {
   try {
-    const result = await pool.query('SELECT * FROM Producto');
+    const result = await pool.query("SELECT * FROM Producto");
     res.json(result.rows);
   } catch (err) {
     next(err);
