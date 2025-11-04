@@ -8,15 +8,19 @@
   <!-- Fuentes -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Questrial&display=swap" rel="stylesheet">
+  <link rel="icon" href="./img/logoarepabuela.png" type="image/png" />
 
-  <!-- Estilos globales ya existentes -->
+  <!-- Estilos -->
   <link rel="stylesheet" href="./css/header&footer.css"/>
   <link rel="stylesheet" href="./css/index.css"/>
   <link rel="stylesheet" href="./css/carta.css"/>
-  <link rel="stylesheet" href="./css/carrito.css">
+  <link rel="stylesheet" href="./css/carrito.css"/>
+
+  <!-- JS -->
   <script src="./js/carrito.js" defer></script>
 </head>
 <body>
+  <!-- HEADER -->
   <header>
     <div class="dropdown">
       <button class="dropbtn" aria-label="Abrir menú">
@@ -37,23 +41,34 @@
       </a>
     </div>
   </header>
+
+  <!-- BOTÓN VOLVER -->
   <a href="./carta.html" class="back-btn">← Seguir comprando</a>
 
-  <!-- 👤 Zona de perfil -->
+  <!-- PERFIL -->
   <section class="perfil">
     <img src="./img/perfil.png" alt="Foto de perfil" class="perfil-foto">
     <div>
-      <h2 id="perfil-nombre">Cliente Ejemplo</h2>
-      <p id="perfil-rol">Rol: Cliente</p>
+      <h2 id="perfil-nombre">Usuario</h2>
+      <p id="perfil-rol">Rol: visitante</p>
     </div>
   </section>
 
-  <!-- 🛒 Carrito -->
+  <!-- CARRITO -->
   <main class="carrito-container" id="carrito-container">
-    <!-- El JS insertará aquí los productos -->
+    <!-- JS insertará los productos -->
   </main>
 
-  <!-- 💰 Total y botón de pago -->
+  <!-- TOTAL + BOTÓN DE PAGO -->
+  <section class="carrito-pago">
+    <div class="carrito-total">
+      <span>Total:</span>
+      <strong id="total-precio">$0</strong>
+    </div>
+    <button id="btnPagar" style="display:none;">Proceder al pago</button>
+  </section>
+
+  <!-- FOOTER GLOBAL -->
   <footer class="footer">
     <div class="footer-content">
       <div class="footer-left">
