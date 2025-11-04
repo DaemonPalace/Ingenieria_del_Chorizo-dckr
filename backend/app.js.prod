@@ -667,6 +667,35 @@ app.get('/api/products', authenticateToken, isAdmin, async (req, res, next) => {
   }
 });
 
+// GET /api/public/products - Productos visibles públicamente (sin token)
+app.get("/api/public/products", async (req, res, next) => {
+  try {
+    // Solo los productos activos (opcional)
+    const result = await pool.query(`
+      SELECT id_producto, nombre, precio, descripcion, imagen_url
+      FROM Producto
+      ORDER BY id_producto ASC
+    `);
+
+    // Asegura que las URLs sean absolutas y accesibles desde el front
+    const products = result.rows.map((p) => ({
+      id: p.id_producto,
+      nombre: p.nombre,
+      precio: p.precio,
+      descripcion: p.descripcion,
+      imagen_url: p.imagen_url
+        ? `${req.protocol}://${req.get("host")}${p.imagen_url}`
+        : "/img/no-image.png",
+    }));
+
+    res.json(products);
+  } catch (err) {
+    console.error("Error obteniendo productos públicos:", err);
+    next(err);
+  }
+});
+
+
 // PUT /api/products/:id - Update product
 app.put('/api/products/:id', authenticateToken, isAdmin, upload.single('imagen'), async (req, res, next) => {
   try {
