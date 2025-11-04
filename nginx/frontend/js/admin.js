@@ -47,9 +47,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const logError = (msg, err) => console.error(`❌ ${msg}`, err);
 
-  // Normaliza URLs de imagen
-  const fixImageURL = (url) =>
-    !url ? "/img/no-image.png" : url.replace("http://", "https://");
+  // Normaliza URLs de imagen (corrige http → https)
+  const fixImageURL = (url) => {
+    if (!url) return "/img/no-image.png";
+    return url.replace("http://", "https://");
+  };
 
   // ==========================
   // 👥 GESTIÓN DE USUARIOS
@@ -122,7 +124,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // 🎛️ EVENTOS DE USUARIOS
+  // ==========================
+  // 🎛️ EVENTOS DE BOTONES USUARIOS
+  // ==========================
   tablaClientesBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
@@ -145,6 +149,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!nuevoRol) return alert("❌ No se seleccionó ningún rol.");
       if (!confirm(`¿Actualizar rol a "${nuevoRol}"?`)) return;
       endpoint = `${API_BASE}/users/${id}/role`;
+      method = "PUT";
+      mensaje = "✅ Rol actualizado correctamente.";
       try {
         const res = await fetch(endpoint, {
           method,
@@ -156,6 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await cargarUsuarios();
       } catch (err) {
         logError("Error actualizando rol:", err);
+        alert("❌ No se pudo actualizar el rol.");
       }
       return;
     } else if (btn.classList.contains("eliminar")) {
@@ -177,6 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       alert(mensaje);
       await cargarUsuarios();
     } catch (err) {
+      alert("❌ Error procesando la solicitud.");
       logError("Error en operación de usuario:", err);
     }
   });
@@ -224,7 +232,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                  style="width:60px;height:60px;object-fit:cover;"
                  onerror="this.src='/img/no-image.png'">
           </td>
-          <td>${parseFloat(p.precio).toFixed(2)}</td>
+          <td>$${parseFloat(p.precio).toFixed(2)}</td>
           <td>${p.descripcion}</td>
           <td class="text-center">
             <button class="btn btn-warning btn-sm edit-btn" data-id="${
@@ -250,11 +258,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
 
     const nombre = document.getElementById("nombreProducto").value.trim();
-    const precioText = document
-      .getElementById("precioProducto")
-      .value.trim()
-      .replace(/[^\d.-]/g, "");
-    const precio = parseFloat(precioText);
+    const precio = document.getElementById("precioProducto").value.trim();
     const descripcion = document
       .getElementById("descripcionProducto")
       .value.trim();
@@ -262,11 +266,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!nombre || !precio || !descripcion || !imagen) {
       alert("⚠️ Todos los campos son obligatorios.");
-      return;
-    }
-
-    if (isNaN(precio) || precio <= 0) {
-      alert("⚠️ El precio debe ser un número positivo.");
       return;
     }
 
@@ -282,7 +281,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      if (!res.ok) throw new Error(await res.text());
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+
       alert("✅ Producto creado exitosamente.");
       formProducto.reset();
       previewImagen.src = "";
@@ -290,17 +294,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       await cargarProductos();
     } catch (err) {
       logError("Error creando producto:", err);
+      alert("❌ No se pudo crear el producto.");
     }
   });
 
-  // 🗑️ / ✏️ / 💾 / ❌ EVENTOS DE PRODUCTOS
+  // 🗑️ ELIMINAR PRODUCTO
   tablaProductosBody.addEventListener("click", async (e) => {
     const btn = e.target.closest("button");
     if (!btn) return;
     const id = btn.dataset.id;
-    const tr = btn.closest("tr");
 
-    // ===== ELIMINAR =====
     if (btn.classList.contains("delete-btn")) {
       if (!confirm("¿Eliminar este producto?")) return;
       try {
@@ -313,70 +316,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         await cargarProductos();
       } catch (err) {
         logError("Error eliminando producto:", err);
+        alert("❌ No se pudo eliminar el producto.");
       }
-      return;
-    }
-
-    // ===== EDITAR =====
-    if (btn.classList.contains("edit-btn")) {
-      const celdas = tr.querySelectorAll("td");
-      celdas[0].contentEditable = "true"; // nombre
-      celdas[2].contentEditable = "true"; // precio
-      celdas[3].contentEditable = "true"; // descripción
-      tr.classList.add("table-warning");
-
-      // Reemplaza botones por Confirmar y Cancelar
-      tr.querySelector(".text-center").innerHTML = `
-        <button class="btn btn-success btn-sm save-btn" data-id="${id}">
-          <i class="fas fa-check"></i> Confirmar
-        </button>
-        <button class="btn btn-secondary btn-sm cancel-btn" data-id="${id}">
-          <i class="fas fa-times"></i> Cancelar
-        </button>
-      `;
-      return;
-    }
-
-    // ===== CONFIRMAR CAMBIOS =====
-    if (btn.classList.contains("save-btn")) {
-      const nombre = tr.children[0].innerText.trim();
-      const precioText = tr.children[2].innerText
-        .trim()
-        .replace(/[^\d.-]/g, "");
-      const precio = parseFloat(precioText);
-      const descripcion = tr.children[3].innerText.trim();
-
-      if (!nombre || !descripcion || isNaN(precio) || precio <= 0) {
-        alert(
-          "⚠️ Los campos no pueden estar vacíos y el precio debe ser positivo."
-        );
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("nombre", nombre);
-      formData.append("precio", precio);
-      formData.append("descripcion", descripcion);
-
-      try {
-        const res = await fetch(`${API_BASE}/products/${id}`, {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        if (!res.ok) throw new Error(await res.text());
-        alert("✅ Producto actualizado correctamente.");
-        await cargarProductos();
-      } catch (err) {
-        logError("Error actualizando producto:", err);
-      }
-      return;
-    }
-
-    // ===== CANCELAR EDICIÓN =====
-    if (btn.classList.contains("cancel-btn")) {
-      await cargarProductos(); // recarga la tabla sin cambios
-      return;
     }
   });
 
@@ -385,5 +326,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================
   await cargarUsuarios();
   await cargarProductos();
+
   console.log("✅ Panel listo.");
 });
