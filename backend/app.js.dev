@@ -545,7 +545,7 @@ app.post(
           "Content-Type": imagen.mimetype,
         }
       );
-      const imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
+      const imagenUrl = `/api/images/products/${fileName}`;
       // Insert into DB (assuming Producto table: id_producto, nombre, precio, descripcion, imagen_url)
       const query = `
       INSERT INTO Producto (nombre, precio, descripcion, imagen_url)
@@ -617,7 +617,7 @@ app.put(
             "Content-Type": imagen.mimetype,
           }
         );
-        imagenUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-products/${fileName}`;
+        imagenUrl = `/api/images/products/${fileName}`;
       }
       // Update DB
       const query = `
@@ -682,4 +682,18 @@ app.delete(
 
 app.listen(port, () => {
   console.log(`Backend running on port ${port}`);
+});
+
+// Sirve imágenes de productos
+app.get("/api/images/products/:filename", async (req, res) => {
+  const { filename } = req.params;
+  try {
+    const data = await minioClient.getObject("arepabuelas-products", filename);
+    const stat = await minioClient.statObject("arepabuelas-products", filename);
+    res.setHeader("Content-Type", stat.metaData["content-type"] || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+    data.pipe(res);
+  } catch (err) {
+    res.status(404).send("Imagen no encontrada");
+  }
 });
