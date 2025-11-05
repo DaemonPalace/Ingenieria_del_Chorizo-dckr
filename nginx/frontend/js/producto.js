@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // =====================================================
   const fetchProduct = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/products/${id}`);
+      const res = await fetch(`${API_BASE}/public/products/${id}`);
       if (!res.ok) throw new Error("No encontrado");
       const p = await res.json();
       return {

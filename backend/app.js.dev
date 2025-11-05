@@ -835,6 +835,41 @@ app.get("/api/public/products", async (req, res, next) => {
   }
 });
 
+app.get("/api/public/products/:id", async (req, res, next) => {
+  try {
+    const id = req.params.id;
+
+    // ✅ Fix: wrap SQL query in backticks and ensure parameters are correct
+    const result = await pool.query(
+      `SELECT id_producto, nombre, precio, descripcion, imagen_url 
+       FROM Producto 
+       WHERE id_producto = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    const p = result.rows[0];
+
+    // ✅ Fix: use template string properly for image URL
+    const product = {
+      id: p.id_producto,
+      nombre: p.nombre,
+      precio: p.precio,
+      descripcion: p.descripcion,
+      imagen_url: p.imagen_url
+        ? `${req.protocol}://${req.get("host")}${p.imagen_url}`
+        : "/img/no-image.png",
+    };
+
+    res.json(product);
+  } catch (err) {
+    console.error("Error obteniendo producto público:", err);
+    next(err);
+  }
+});
 
 // PUT /api/products/:id - Update product
 app.put(
