@@ -253,37 +253,3 @@ document.addEventListener("DOMContentLoaded", () => {
     render(products);
   })();
 });
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const API_BASE = `${window.location.origin}/api`;
-  const $list = document.getElementById("menu-list");
-
-  const formatCOP = (value) =>
-    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(value);
-
-  try {
-    const res = await fetch(`${API_BASE}/products`);
-    const products = await res.json();
-
-    $list.innerHTML = products
-      .map(
-        (p) => `
-        <div class="menu-item">
-          <img src="${p.imagen_url}" alt="${p.nombre}" class="menu-img" data-id="${p.id_producto}">
-          <h3>${p.nombre}</h3>
-          <p>${formatCOP(p.precio)}</p>
-        </div>`
-      )
-      .join("");
-
-    // 🖱️ Evento click en imagen
-    document.querySelectorAll(".menu-img").forEach((img) => {
-      img.addEventListener("click", () => {
-        const id = img.getAttribute("data-id");
-        window.location.href = `producto.html?id=${id}`;
-      });
-    });
-  } catch (err) {
-    console.error("Error al cargar productos:", err);
-  }
-});
