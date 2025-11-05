@@ -1,10 +1,7 @@
-// carta.js — carga productos reales desde /api/public/products (sin token requerido)
 document.addEventListener("DOMContentLoaded", () => {
   console.log("🚀 Carta cargada correctamente");
-
   const API_BASE = `${window.location.origin}/api`;
   const $list = document.getElementById("menu-list");
-
   // ==========================================================
   // 🧮 Utilidades
   // ==========================================================
@@ -14,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
       currency: "COP",
       maximumFractionDigits: 0,
     }).format(Number(value || 0));
-
   const fixImageURL = (url) => {
     try {
       if (!url) return "./img/no-image.png";
@@ -27,39 +23,32 @@ document.addEventListener("DOMContentLoaded", () => {
       return "./img/no-image.png";
     }
   };
-
   // ==========================================================
   // 🛒 Carrito local con expiración (20 min)
   // ==========================================================
   const CART_KEY = "cart";
   const CART_TTL_MS = 20 * 60 * 1000; // 20 minutos
-
   const getCart = () => {
     try {
       const data = JSON.parse(localStorage.getItem(CART_KEY) || "null");
-
       // Si no hay datos o no es un formato válido
       if (!data || typeof data !== "object" || !Array.isArray(data.items)) {
         console.warn("⚠️ Carrito vacío o corrupto. Reiniciando...");
         return [];
       }
-
       const { createdAt, items } = data;
-
       // Expira el carrito después de 20 minutos
       if (Date.now() - createdAt > CART_TTL_MS) {
         console.warn("🕒 Carrito expirado — limpiando.");
         localStorage.removeItem(CART_KEY);
         return [];
       }
-
       return items;
     } catch (err) {
       console.error("❌ Error leyendo carrito del localStorage:", err);
       return [];
     }
   };
-
   const setCart = (items) => {
     try {
       localStorage.setItem(
@@ -71,18 +60,14 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("❌ Error guardando carrito:", err);
     }
   };
-
   const addToCart = (product) => {
     let cart = getCart();
-
     // Garantiza que siempre sea un arreglo
     if (!Array.isArray(cart)) {
       console.warn("⚠️ Reiniciando carrito dañado...");
       cart = [];
     }
-
     const idx = cart.findIndex((i) => i.id === product.id);
-
     if (idx >= 0) {
       cart[idx].quantity = (cart[idx].quantity || 1) + 1;
     } else {
@@ -94,18 +79,15 @@ document.addEventListener("DOMContentLoaded", () => {
         quantity: 1,
       });
     }
-
     setCart(cart);
     console.log(`🛒 Producto añadido: ${product.name}`);
     showToast(`${product.name} añadido al carrito 🧺`);
   };
-
   // ==========================================================
   // 🎨 Renderizado de productos
   // ==========================================================
   const render = (items) => {
     if (!$list) return;
-
     if (!items.length) {
       $list.innerHTML = `
         <p style="color:#fff;text-align:center;margin-top:2rem">
@@ -113,12 +95,11 @@ document.addEventListener("DOMContentLoaded", () => {
         </p>`;
       return;
     }
-
     const tpl = items
       .map((p) => {
         const img = fixImageURL(p.image);
         return `
-        <article class="card" role="group" aria-label="${p.name}">
+        <article class="card" role="group" aria-label="${p.name}" data-product='${JSON.stringify(p)}'>
           <img class="card__img" src="${img}" alt="${p.name}"
                onerror="this.src='./img/no-image.png'">
           <div class="card__body">
@@ -137,11 +118,9 @@ document.addEventListener("DOMContentLoaded", () => {
         </article>`;
       })
       .join("");
-
     $list.innerHTML = tpl;
     console.log(`✅ Renderizados ${items.length} productos.`);
   };
-
   // ==========================================================
   // 🔄 Mapeo del backend
   // ==========================================================
@@ -157,7 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
       p.image ??
       "./img/no-image.png",
   });
-
   // ==========================================================
   // 🌐 Fetch de productos desde API pública
   // ==========================================================
@@ -166,13 +144,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch(`${API_BASE}/public/products`, {
         headers: { "Content-Type": "application/json" },
       });
-
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
       const data = await res.json();
-
       if (!Array.isArray(data))
         throw new Error("Respuesta inválida del backend");
-
       console.log(`📦 Productos recibidos: ${data.length}`);
       return data.map(mapBackendProduct);
     } catch (err) {
@@ -180,31 +155,40 @@ document.addEventListener("DOMContentLoaded", () => {
       return [];
     }
   };
-
   // ==========================================================
-  // 🧠 Delegación de eventos (Añadir al carrito)
+  // 🧠 Delegación de eventos (Añadir al carrito o redirigir a detalle)
   // ==========================================================
   document.body.addEventListener("click", (ev) => {
     const btn = ev.target.closest(".btn-add");
-    if (!btn) return;
+    if (btn) {
+      try {
+        const product = JSON.parse(btn.getAttribute("data-product"));
+        addToCart(product);
+        // Feedback visual temporal
+        btn.disabled = true;
+        const original = btn.innerHTML;
+        btn.innerHTML = "✔ Añadido";
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = original;
+        }, 800);
+      } catch (err) {
+        console.error("❌ Error añadiendo producto:", err);
+      }
+      return; // Evita que se procese como click en la card
+    }
 
-    try {
-      const product = JSON.parse(btn.getAttribute("data-product"));
-      addToCart(product);
-
-      // Feedback visual temporal
-      btn.disabled = true;
-      const original = btn.innerHTML;
-      btn.innerHTML = "✔ Añadido";
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.innerHTML = original;
-      }, 800);
-    } catch (err) {
-      console.error("❌ Error añadiendo producto:", err);
+    const card = ev.target.closest(".card");
+    if (card) {
+      try {
+        const product = JSON.parse(card.getAttribute("data-product"));
+        localStorage.setItem("productoSeleccionado", product.id);
+        window.location.href = "producto.html";
+      } catch (err) {
+        console.error("❌ Error redirigiendo a producto:", err);
+      }
     }
   });
-
   // ==========================================================
   // 🔔 Pequeña notificación visual (toast)
   // ==========================================================
@@ -219,7 +203,6 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => toast.remove(), 500);
     }, 2500);
   };
-
   // CSS dinámico para el toast
   const style = document.createElement("style");
   style.textContent = `
@@ -244,7 +227,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   `;
   document.head.appendChild(style);
-
   // ==========================================================
   // 🚀 Inicialización
   // ==========================================================
