@@ -306,7 +306,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ==========================================================
---   CREAR SUPER ADMIN POR DEFECTO (si no existe)
+--   CREAR SUPER ADMIN POR DEFECTO
 -- ==========================================================
 DO $$
 BEGIN
@@ -314,17 +314,12 @@ BEGIN
         SELECT 1 FROM Usuario WHERE correo = 'superadmin@arepabuelas.com'
     ) THEN
         INSERT INTO Usuario (
-            nombre,
-            correo,
-            password_hash,
-            foto_url,
-            rol,
-            aprobado,
-            fecha_registro
-        ) VALUES (
+            nombre, correo, password_hash, foto_url, rol, aprobado, fecha_registro
+        )
+        VALUES (
             'Super Admin',
             'superadmin@arepabuelas.com',
-            '$2b$10$S1VlRRgqBmYI0aP3tBQ/x.VfwsIV8Si3TFB/0ebaFHLr5UN/PPiua', -- bcrypt hash
+            '$2b$10$S1VlRRgqBmYI0aP3tBQ/x.VfwsIV8Si3TFB/0ebaFHLr5UN/PPiua',
             'http://minio:9000/arepabuelas-users/camaronmacuil.jpg',
             'superadmin',
             TRUE,
@@ -333,3 +328,21 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ==========================================================
+--   INSERTAR PRODUCTOS BASE
+-- ==========================================================
+INSERT INTO Producto (nombre, descripcion, precio, stock, imagen_url, activo)
+VALUES
+('Arepa Boyacense', 'Hecha con maíz pelado, cuajada o queso campesino, y a veces un toque de panela.', 3700, 100, '/api/images/products/arepaboyacense.jpg', TRUE),
+('Patacones Gratinados', 'Plátano verde frito y aplastado, cubiertos con queso derretido y a menudo con hogao.', 8500, 100, '/api/images/products/Patacones.jpg', TRUE),
+('Plátano con Bocadillo y Queso', 'Plátano maduro con bocadillo y queso fresco.', 12500, 100, '/api/images/products/Platano_mediana.png', TRUE),
+('Ajiaco', 'Ajiaco típico Boyacense con pollo, diferentes papas, arroz, aguacate y alcaparras.', 34900, 100, '/api/images/products/Ajiaco_mediano.png', TRUE),
+('Lengua en Salsa', 'Lengua en salsa criolla de vino, típico de Boyacá. Acompañada de arroz blanco y ensalada.', 45700, 100, '/api/images/products/lenguasalsa.jpg', TRUE),
+('Cocido Boyacense', 'Cocido típico boyacense con costilla de res, gallina criolla, papa criolla, cubios, chuguas, mazorca, habas, arroz y ají casero.', 42900, 100, '/api/images/products/cocidoboyacense.png', TRUE),
+('Merengón de Guanábana', 'Merengón de guanábana, crujiente por fuera y suave por dentro.', 22400, 100, '/api/images/products/Merengon_Grande.png', TRUE),
+('Cuajada con Melado', 'Postre típico colombiano con cuajada fresca y melado de panela, a veces con queso o arequipe.', 12700, 100, '/api/images/products/cuajada_mediana.png', TRUE),
+('Migao Boyacense', 'Bebida caliente con chocolate derretido, queso fresco y arepa blanca desmenuzada.', 8000, 100, '/api/images/products/migao.jpg', TRUE),
+('Agua', 'Botella de agua en plástico.', 3500, 100, '/api/images/products/agua.png', TRUE),
+('Gaseosa', 'Gaseosa Colombiana típica.', 3500, 100, '/api/images/products/gaseosa.png', TRUE),
+('Cerveza', 'Cerveza típica Águila.', 3500, 100, '/api/images/products/cerveza.png', TRUE);

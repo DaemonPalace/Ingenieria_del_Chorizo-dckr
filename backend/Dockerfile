@@ -2,14 +2,14 @@ FROM node:18
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
-COPY package.json .
-RUN npm install
+COPY package*.json ./
+RUN npm install --quiet
 
-# Copy the rest of the application code
 COPY . .
 
-# Expose the backend port
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Copiar script de inicio
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]
