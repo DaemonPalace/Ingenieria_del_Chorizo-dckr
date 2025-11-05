@@ -217,100 +217,106 @@ app.get("/api/minio-test", async (req, res, next) => {
   }
 });
 
-// Register endpoint (for clientes)
+// ===============================
+// 📸 Register endpoint (para clientes)
+// ===============================
 app.post("/api/register", upload.single("foto"), async (req, res, next) => {
-  console.log("Received /api/register request:", {
+  console.log("📩 Received /api/register request:", {
     body: req.body,
     file: req.file
       ? { originalname: req.file.originalname, size: req.file.size }
       : "No file",
   });
+
   try {
     const { nombre, correo, password } = req.body;
     const foto = req.file;
     const missingFields = [];
+
     if (!nombre) missingFields.push("nombre");
     if (!correo) missingFields.push("correo");
     if (!password) missingFields.push("password");
     if (!foto) missingFields.push("foto");
+
     if (missingFields.length > 0) {
-      console.error("Validation failed: Missing required fields", {
-        missingFields,
-      });
       return res
         .status(400)
         .json({
           error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
         });
     }
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-      console.error("Validation failed: Invalid email", { correo });
       return res.status(400).json({ error: "Correo inválido" });
     }
-    console.log("Checking for existing email:", correo);
+
+    // 🔎 Validar correo duplicado
     const emailCheck = await pool.query(
       "SELECT id_usuario FROM usuario WHERE correo = $1",
       [correo]
     );
     if (emailCheck.rows.length > 0) {
-      console.error("Email already exists:", correo);
       return res.status(400).json({ error: "El correo ya está registrado" });
     }
-    console.log("Hashing password...");
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
-    console.log("Password hashed successfully");
+
+    // 🔐 Encriptar contraseña
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // 📸 Subir imagen a MinIO
     const fileExtension = path.extname(foto.originalname).toLowerCase();
     const fileName = `profile_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 15)}${fileExtension}`;
-    console.log("Generated filename for upload:", fileName);
-    console.log("Uploading photo to MinIO:", {
-      bucket: "arepabuelas-users",
-      fileName,
+
+    await minioClient.putObject("arepabuelas-users", fileName, foto.buffer, {
+      "Content-Type": foto.mimetype,
     });
-    try {
-      await minioClient.putObject("arepabuelas-users", fileName, foto.buffer, {
-        "Content-Type": foto.mimetype,
-      });
-      console.log("Photo uploaded successfully:", fileName);
-    } catch (err) {
-      console.error("MinIO upload failed:", {
-        error: err.message,
-        code: err.code,
-        stack: err.stack,
-      });
-      throw new Error(`Failed to upload photo to MinIO: ${err.message}`);
-    }
-    const fotoUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-users/${fileName}`;
-    console.log("Generated photo URL:", fotoUrl);
-    console.log("Inserting user into database:", {
-      nombre,
-      correo,
-      password_hash,
-      fotoUrl,
-    });
-    const query = `
+
+    // 📁 Nueva URL interna consistente con productos
+    const fotoUrl = `/api/images/users/${fileName}`;
+
+    // 💾 Insertar usuario en BD
+    const result = await pool.query(
+      `
       INSERT INTO usuario (nombre, correo, password_hash, foto_url, rol, aprobado, fecha_registro)
       VALUES ($1, $2, $3, $4, 'cliente', FALSE, CURRENT_TIMESTAMP)
       RETURNING id_usuario
-    `;
-    const values = [nombre, correo, password_hash, fotoUrl];
-    const result = await pool.query(query, values);
-    console.log("User registered successfully:", {
+      `,
+      [nombre, correo, password_hash, fotoUrl]
+    );
+
+    console.log("✅ Usuario registrado correctamente:", {
       id_usuario: result.rows[0].id_usuario,
+      correo,
     });
-    res.status(201).json({ message: "Usuario registrado exitosamente" });
+
+    res
+      .status(201)
+      .json({ message: "Usuario registrado exitosamente", foto_url: fotoUrl });
   } catch (err) {
-    console.error("Registration error:", {
-      error: err.message,
-      stack: err.stack,
-      body: req.body,
-      file: req.file ? req.file.originalname : "No file",
-    });
+    console.error("❌ Registration error:", err);
     next(err);
   }
 });
+
+
+// ===============================
+// 🖼️ Nueva ruta para servir imágenes de usuarios
+// ===============================
+app.get("/api/images/users/:filename", async (req, res) => {
+  const { filename } = req.params;
+  try {
+    const data = await minioClient.getObject("arepabuelas-users", filename);
+    const stat = await minioClient.statObject("arepabuelas-users", filename);
+    res.setHeader("Content-Type", stat.metaData["content-type"] || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+    data.pipe(res);
+  } catch (err) {
+    console.error("Error obteniendo imagen de usuario:", err);
+    res.status(404).send("Imagen no encontrada");
+  }
+});
+
 
 // Login endpoint
 app.post("/api/login", async (req, res, next) => {
@@ -697,6 +703,41 @@ app.delete(
     }
   }
 );
+// GET /api/users/me - Obtiene el perfil del usuario autenticado
+app.get("/api/users/me", authenticateToken, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        id_usuario, 
+        nombre, 
+        correo, 
+        rol::TEXT as rol, 
+        aprobado, 
+        fecha_registro, 
+        foto_url
+      FROM usuario
+      WHERE id_usuario = $1
+    `,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const user = result.rows[0];
+
+    // Mantén la URL tal como está guardada en la base de datos
+    user.foto_url = user.foto_url || null;
+
+    res.json(user);
+  } catch (err) {
+    console.error("Error en /api/users/me:", err);
+    next(err);
+  }
+});
+
 
 // Products CRUD
 
