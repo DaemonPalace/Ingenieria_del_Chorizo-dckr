@@ -121,3 +121,111 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderProduct();
 });
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const API_BASE = `${window.location.origin}/api`;
+  const token = sessionStorage.getItem("authToken");
+  const role = sessionStorage.getItem("userRole");
+  const id = new URLSearchParams(window.location.search).get("id");
+  const $container = document.getElementById("product-container");
+
+  if (!id) {
+    $container.innerHTML = "<p>❌ Producto no especificado.</p>";
+    return;
+  }
+
+  // 📦 Cargar producto
+  try {
+    const res = await fetch(`${API_BASE}/products/${id}`);
+    if (!res.ok) throw new Error("Producto no encontrado");
+    const p = await res.json();
+
+    $container.innerHTML = `
+      <div class="product-detail">
+        <img src="${p.imagen_url}" alt="${p.nombre}">
+        <div class="info">
+          <h1>${p.nombre}</h1>
+          <p>${p.descripcion}</p>
+          <p class="price">$${p.precio}</p>
+        </div>
+      </div>
+      <section class="comments-section">
+        <h2>Comentarios</h2>
+        <div id="comments-container"></div>
+        ${
+          token && role === "cliente"
+            ? `
+          <form id="commentForm">
+            <textarea id="comentario" placeholder="Escribe tu comentario..." required></textarea>
+            <label>Calificación:
+              <select id="calificacion">
+                <option value="5">⭐️⭐️⭐️⭐️⭐️</option>
+                <option value="4">⭐️⭐️⭐️⭐️</option>
+                <option value="3">⭐️⭐️⭐️</option>
+                <option value="2">⭐️⭐️</option>
+                <option value="1">⭐️</option>
+              </select>
+            </label>
+            <button type="submit">Publicar</button>
+          </form>`
+            : `<p>🔐 <a href="./login.html">Inicia sesión</a> para comentar.</p>`
+        }
+      </section>
+    `;
+
+    // Cargar comentarios existentes
+    loadComments(id);
+  } catch (err) {
+    $container.innerHTML = `<p>❌ Error: ${err.message}</p>`;
+  }
+
+  // 📩 Enviar comentario
+  document.addEventListener("submit", async (e) => {
+    if (e.target.id === "commentForm") {
+      e.preventDefault();
+      const comentario = document.getElementById("comentario").value.trim();
+      const calificacion = parseInt(document.getElementById("calificacion").value);
+
+      try {
+        const res = await fetch(`${API_BASE}/products/${id}/comments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ comentario, calificacion }),
+        });
+
+        if (!res.ok) throw new Error("Error al enviar comentario");
+        alert("✅ Comentario publicado");
+        loadComments(id);
+        e.target.reset();
+      } catch (err) {
+        alert("❌ Error: " + err.message);
+      }
+    }
+  });
+
+  // 🔁 Función para recargar comentarios
+  async function loadComments(id) {
+    const $comments = document.getElementById("comments-container");
+    const res = await fetch(`${API_BASE}/products/${id}/comments`);
+    const comments = await res.json();
+
+    if (!comments.length) {
+      $comments.innerHTML = "<p>Sin comentarios aún. Sé el primero 🍽️</p>";
+      return;
+    }
+
+    $comments.innerHTML = comments
+      .map(
+        (c) => `
+        <div class="comment">
+          <p><strong>${c.usuario}</strong> — ${"⭐".repeat(c.calificacion)}</p>
+          <p>${c.comentario}</p>
+          <small>${new Date(c.fecha).toLocaleString("es-CO")}</small>
+        </div>`
+      )
+      .join("");
+  }
+});
