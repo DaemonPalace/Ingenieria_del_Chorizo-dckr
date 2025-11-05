@@ -262,7 +262,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(value);
 
   try {
-    const res = await fetch(`${API_BASE}/public/products`);
+    const res = await fetch(`${API_BASE}/products`);
     const products = await res.json();
 
     $list.innerHTML = products
