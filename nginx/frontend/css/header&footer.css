@@ -1,9 +1,4 @@
-body {
-    font-family: 'Anton', sans-serif, 'Questrial', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #fff;
-}
+
 
 /* Estilos del Header */
 header {
@@ -22,6 +17,7 @@ header h1 {
 }
 
 header h1 a {
+    font-family: 'Great Vibes';
     color: inherit; /* Hereda el color de h1 */
     text-decoration: none; /* Sin subrayado */
     display: inline-block; /* Para que el transform funcione correctamente */
