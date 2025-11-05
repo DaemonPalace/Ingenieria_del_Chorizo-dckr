@@ -1,33 +1,45 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("🔐 Sistema de logout inicializado.");
+  const loginLink = document.querySelector('a[href$="login.html"]');
+  const logoutLink = document.getElementById("logoutBtn");
 
-  // Identifica el botón de logout (puede tener id o clase)
-  const logoutBtn =
-    document.getElementById("logoutBtn") ||
-    document.querySelector(".logout-btn") ||
-    document.querySelector("[data-logout]");
-
-  if (!logoutBtn) {
-    console.warn("⚠️ No se encontró ningún botón de logout en esta página.");
+  if (!logoutLink || !loginLink) {
+    console.warn("⚠️ No se encontraron los botones Login/Logout en el DOM.");
     return;
   }
 
-  // Evento de clic para cerrar sesión
-  logoutBtn.addEventListener("click", (e) => {
+  const token = sessionStorage.getItem("authToken");
+  const role = sessionStorage.getItem("userRole");
+  const email = sessionStorage.getItem("userEmail");
+
+  // --- Control visual de botones ---
+  if (token) {
+    console.log(
+      `✅ Sesión activa detectada (${role || "sin rol"}: ${email || "usuario"})`
+    );
+    loginLink.style.display = "none";
+    logoutLink.style.display = "block";
+  } else {
+    console.log("🚪 Sin sesión activa. Mostrando botón de login.");
+    loginLink.style.display = "block";
+    logoutLink.style.display = "none";
+  }
+
+  // --- Acción de logout ---
+  logoutLink.addEventListener("click", (e) => {
     e.preventDefault();
 
-    const confirmLogout = confirm("¿Deseas cerrar la sesión actual?");
-    if (!confirmLogout) return;
+    const confirmar = confirm("¿Deseas cerrar la sesión actual?");
+    if (!confirmar) return;
 
-    console.log("👋 Cerrando sesión y limpiando sessionStorage...");
-
-    // 🧹 Limpia todos los datos de sesión
+    console.log("👋 Cerrando sesión y limpiando datos...");
     sessionStorage.clear();
+    localStorage.removeItem("cart");
 
-    // Opción: limpiar localStorage del carrito si lo deseas
-    // localStorage.removeItem("cart");
+    // Actualiza visibilidad inmediata
+    loginLink.style.display = "block";
+    logoutLink.style.display = "none";
 
-    // Redirige al login (ajusta si tu ruta cambia)
-    window.location.href = "/login.html";
+    alert("✅ Sesión cerrada con éxito.");
+    window.location.href = "../login.html";
   });
 });
