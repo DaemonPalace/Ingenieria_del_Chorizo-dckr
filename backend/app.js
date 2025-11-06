@@ -871,7 +871,6 @@ app.get("/api/public/products/:id", async (req, res, next) => {
   }
 });
 
-
 // PUT /api/products/:id - Update product
 app.put(
   "/api/products/:id",

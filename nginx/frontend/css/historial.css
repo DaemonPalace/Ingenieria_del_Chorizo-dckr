@@ -1,0 +1,147 @@
+/* Fuentes */
+@import url('https://fonts.googleapis.com/css2?family=Questrial&family=Anton&family=Great+Vibes&display=swap');
+
+/* Paleta */
+:root{
+  --bg-dark: #3C2E26;  /* marrón oscuro */
+  --gold:    #d4a373;  /* dorado */
+  --cream:   #f9f3e3;  /* crema */
+  --row-odd: #f3e8d2;  /* fila impar */
+  --danger:  #C0392B;
+  --danger2: #E74C3C;
+}
+
+/* Ocultar hasta validar sesión (si el JS lo usa) */
+body{
+  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  margin: 0;
+  background: var(--cream);
+  color: var(--bg-dark);
+  font-family: 'Questrial', sans-serif;
+}
+body.loaded{
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .3s ease-in;
+}
+
+/* Sidebar */
+.sidebar{
+  font-family: 'Great Vibes', cursive;
+  height: 100vh;
+  position: fixed;
+  top: 0; left: 0;
+  width: 250px;
+  background: var(--bg-dark);
+  color: #fff;
+  padding: 16px;
+  overflow-y: auto;
+}
+.logo-sidebar{
+  width: 150px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  padding: 10px 0;
+}
+.sidebar h2{
+  font-family: 'Anton', sans-serif;
+  font-size: 22px;
+}
+.sidebar .nav-link{
+  font-size: 18px;
+  padding: 10px;
+  border-radius: 5px;
+  color: var(--gold) !important;
+  transition: background-color .3s, color .3s;
+  display: block;
+  text-decoration: none;
+}
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active{
+  background: var(--gold);
+  color: var(--bg-dark) !important;
+}
+.sidebar .nav-link.logout{
+  width: 100%;
+  margin-top: 10px;
+  text-align: left;
+  background: var(--bg-dark);
+  border-radius: 5px;
+}
+.sidebar .nav-link.logout:hover{
+  background: var(--gold);
+  color: #fff !important;
+}
+
+/* Contenido */
+.content{
+  margin-left: 250px;
+  padding: 20px;
+  background: var(--cream);
+  min-height: 100vh;
+}
+.content h1{
+  font-family: 'Anton', sans-serif;
+  color: var(--bg-dark);
+}
+
+/* Filtros */
+.hist-filtros .form-control{
+  border: 1px solid var(--gold);
+  background: #fff;
+  color: var(--bg-dark);
+}
+.hist-filtros .form-control:focus{
+  box-shadow: 0 0 0 .2rem rgba(212,163,115,.25);
+  border-color: var(--gold);
+}
+#btnLimpiar.btn{
+  background: var(--gold);
+  color: var(--bg-dark);
+  border: none;
+}
+#btnLimpiar.btn:hover{
+  background: var(--bg-dark);
+  color: #fff;
+}
+
+/* Tabla */
+.table{
+  border: 1px solid var(--gold);
+  background: #fff;
+}
+.table thead{
+  background: var(--bg-dark);
+  color: #fff;
+}
+.table-striped tbody tr:nth-of-type(odd){
+  background: var(--row-odd);
+}
+.table-striped tbody tr:hover{
+  background: var(--gold);
+  color: var(--bg-dark);
+}
+.table td, .table th{
+  vertical-align: middle;
+  text-align: center;
+  padding: 10px;
+}
+.table td.text-end{
+  font-weight: 700;
+}
+
+/* Responsive básico */
+@media (max-width: 992px){
+  .sidebar{
+    position: relative;
+    width: 100%;
+    height: auto;
+  }
+  .content{
+    margin-left: 0;
+  }
+}
