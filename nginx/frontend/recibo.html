@@ -7,6 +7,8 @@
   <link rel="icon" href="./img/logoarepabuela.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Questrial&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="./css/header&footer.css"/>
   <style>
     body{ background:#D69E32; font-family:'Questrial',sans-serif; color:#3C2E26; margin:0; }
@@ -65,44 +67,9 @@
 
       <div class="btns">
         <a class="btn" href="./carta.html">Seguir comprando</a>
-        <button class="btn" id="btnImprimir">Imprimir recibo</button>
       </div>
     </div>
   </div>
-
-  <script>
-    (function(){
-      const data = JSON.parse(sessionStorage.getItem('lastOrder') || 'null');
-      if(!data){ window.location.href = './carta.html'; return; }
-
-      const fmt = v => '$' + Number(v||0).toLocaleString('es-CO');
-
-      document.getElementById('orderId').textContent = data.orderId ? ('#' + data.orderId) : '—';
-      document.getElementById('fecha').textContent = new Date(data.fecha || Date.now()).toLocaleString('es-CO');
-      document.getElementById('cliente').textContent = `${data.nombre || ''} ${data.apellido || ''}`.trim() || data.correo || '—';
-      document.getElementById('metodo').textContent = (data.metodo || 'tarjeta').toUpperCase();
-
-      // Items
-      const $items = document.getElementById('items');
-      (data.carrito || []).forEach(it=>{
-        const row = document.createElement('div');
-        row.className = 'item';
-        row.innerHTML = `<span>${it.name} x${it.quantity}</span><span>${fmt(it.price * it.quantity)}</span>`;
-        $items.appendChild(row);
-      });
-
-      // Totales
-      document.getElementById('subtotal').textContent = fmt(data.subtotal);
-      if((data.descuento||0) > 0){
-        document.getElementById('descuento').textContent = '- ' + fmt(data.descuento);
-        document.getElementById('rowDesc').style.display = '';
-        document.getElementById('tagDesc').style.display = 'inline-block';
-      }
-      document.getElementById('total').textContent = fmt(data.total);
-
-      // Imprimir
-      document.getElementById('btnImprimir').addEventListener('click', ()=>window.print());
-    })();
-  </script>
+  <script src="./js/recibo.js"></script>
 </body>
 </html>
