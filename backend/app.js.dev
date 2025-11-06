@@ -1253,8 +1253,6 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
   }
 });
 
-
-
 // ===============================
 // 🧾 GET Pedido Info (Receipt)
 // ===============================
