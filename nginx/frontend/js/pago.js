@@ -10,47 +10,72 @@ document.addEventListener("DOMContentLoaded", async () => {
   const $descuentoRow = document.getElementById("descuentoRow");
 
   // =====================================================
-  // 🛒 CARGAR CARRITO
+  // 🛡️ RESTRICCIÓN DE ACCESO
   // =====================================================
+  // 1️⃣ Verifica sesión
+  if (!token || !email) {
+    alert("⚠️ Debes iniciar sesión para acceder al pago.");
+    window.location.href = "./login.html";
+    return;
+  }
+
+  // 2️⃣ Verifica carrito
   const cartData = JSON.parse(localStorage.getItem("cart") || "{}");
   const cart = cartData.items || [];
-  let subtotal = 0;
+  if (!cart.length) {
+    alert("🛒 Tu carrito está vacío. Añade productos antes de pagar.");
+    window.location.href = "./carta.html";
+    return;
+  }
 
+  // =====================================================
+  // 🧾 CARGAR CARRITO Y CALCULAR SUBTOTAL
+  // =====================================================
+  let subtotal = 0;
   $resumen.innerHTML = "";
   cart.forEach((item) => {
-    const line = document.createElement("div");
     const itemTotal = item.price * item.quantity;
-    line.innerHTML = `<span>${item.name} x${item.quantity}</span><span>$${itemTotal.toLocaleString()}</span>`;
-    $resumen.appendChild(line);
     subtotal += itemTotal;
+
+    const line = document.createElement("div");
+    line.innerHTML = `
+      <span>${item.name} x${item.quantity}</span>
+      <span>$${itemTotal.toLocaleString()}</span>
+    `;
+    $resumen.appendChild(line);
   });
 
   $subtotal.textContent = `$${subtotal.toLocaleString()}`;
   let descuento = 0;
 
   // =====================================================
-  // 💸 DESCUENTO DE PRIMERA COMPRA
+  // 💸 DESCUENTO DE PRIMERA COMPRA (10%)
   // =====================================================
-  if (token && email) {
-    try {
-      const res = await fetch(`${API_BASE}/orders/user/${email}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const orders = await res.json();
-        if (!orders || orders.length === 0) {
-          descuento = subtotal * 0.1;
-          $descuento.textContent = `- $${descuento.toLocaleString()}`;
-          $descuentoRow.classList.remove("hidden");
-        }
+  try {
+    const res = await fetch(`${API_BASE}/orders/user/${email}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      const orders = await res.json();
+      if (!orders || orders.length === 0) {
+        descuento = subtotal * 0.1;
+        $descuento.textContent = `- $${descuento.toLocaleString()}`;
+        $descuentoRow.classList.remove("hidden");
       }
-    } catch (err) {
-      console.warn("⚠️ No se pudo verificar historial de compras:", err);
     }
+  } catch (err) {
+    console.warn("⚠️ No se pudo verificar historial de compras:", err);
   }
 
   const total = subtotal - descuento;
   $total.textContent = `$${total.toLocaleString()}`;
+
+  if (total <= 0) {
+    alert("⚠️ No se puede procesar un pago de $0.");
+    window.location.href = "./carta.html";
+    return;
+  }
 
   // =====================================================
   // 💳 VALIDACIONES DE FORMULARIO
@@ -60,12 +85,38 @@ document.addEventListener("DOMContentLoaded", async () => {
   const nombre = form.nombre;
   const apellido = form.apellido;
   const telefono = form.telefono;
-  const titular = form.titular; // ← nombre en la tarjeta
+  const titular = form.titular;
   const tarjeta = form.tarjeta;
   const fecha = form.fecha;
   const cvv = form.cvv;
+  const metodo = form.metodo;
+  const cuotasSelect = document.createElement("select");
 
-  // 🔧 Helpers visuales
+  // =====================================================
+  // 📆 Campo de cuotas (solo si método = tarjeta)
+  // =====================================================
+  cuotasSelect.id = "cuotas";
+  cuotasSelect.name = "cuotas";
+  cuotasSelect.innerHTML = `
+    <option value="1">1 cuota</option>
+    <option value="2">2 cuotas</option>
+    <option value="3">3 cuotas</option>
+    <option value="6">6 cuotas</option>
+    <option value="12">12 cuotas</option>
+  `;
+  cuotasSelect.style.display = "none";
+  cuotasSelect.style.marginTop = "10px";
+  cuotasSelect.classList.add("form-control");
+  metodo.parentElement.appendChild(cuotasSelect);
+
+  metodo.addEventListener("change", () => {
+    cuotasSelect.style.display =
+      metodo.value === "tarjeta" ? "block" : "none";
+  });
+
+  // =====================================================
+  // 🧹 Helpers visuales
+  // =====================================================
   const showError = (input, msg) => {
     input.classList.add("invalid");
     input.classList.remove("valid");
@@ -85,7 +136,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (err) err.textContent = "";
   };
 
-  // Solo letras y espacios (máx 30)
+  // =====================================================
+  // ✏️ Restricciones de formato
+  // =====================================================
   const soloLetras = (input) => {
     input.value = input.value
       .replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ ]/g, "")
@@ -96,13 +149,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   nombre.addEventListener("input", () => soloLetras(nombre));
   apellido.addEventListener("input", () => soloLetras(apellido));
 
-  // Solo números en teléfono (máx 10)
   telefono.addEventListener("input", () => {
     telefono.value = telefono.value.replace(/\D/g, "");
     if (telefono.value.length > 10) telefono.value = telefono.value.slice(0, 10);
   });
 
-  // Solo letras y espacios, sin tildes, TODO en mayúsculas
   titular.addEventListener("input", () => {
     titular.value = titular.value
       .toUpperCase()
@@ -112,13 +163,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       titular.value = titular.value.slice(0, 40);
   });
 
-  // Solo 16 dígitos en tarjeta
   tarjeta.addEventListener("input", () => {
     tarjeta.value = tarjeta.value.replace(/\D/g, "");
     if (tarjeta.value.length > 16) tarjeta.value = tarjeta.value.slice(0, 16);
   });
 
-  // Formato MM/YY
   fecha.addEventListener("input", () => {
     let val = fecha.value.replace(/\D/g, "");
     if (val.length > 4) val = val.slice(0, 4);
@@ -126,14 +175,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     fecha.value = val;
   });
 
-  // CVV solo 3-4 dígitos
   cvv.addEventListener("input", () => {
     cvv.value = cvv.value.replace(/\D/g, "");
     if (cvv.value.length > 4) cvv.value = cvv.value.slice(0, 4);
   });
 
   // =====================================================
-  // ✅ VALIDACIÓN FINAL
+  // ✅ VALIDACIÓN FINAL Y ENVÍO
   // =====================================================
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -162,31 +210,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (titular.value.trim().length < 5) {
-      showError(titular, "Nombre del titular inválido (solo letras y mayúsculas).");
+      showError(titular, "Nombre del titular inválido.");
       valid = false;
     }
 
-    if (tarjeta.value.trim().length !== 16) {
-      showError(tarjeta, "Debe tener 16 dígitos numéricos.");
-      valid = false;
-    }
-
-    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(fecha.value.trim())) {
-      showError(fecha, "Usa formato MM/YY.");
-      valid = false;
-    } else {
-      const [mes, año] = fecha.value.trim().split("/").map(Number);
-      const expDate = new Date(2000 + año, mes);
-      const now = new Date();
-      if (expDate < now) {
-        showError(fecha, "Tarjeta vencida.");
+    if (metodo.value === "tarjeta") {
+      if (tarjeta.value.trim().length !== 16) {
+        showError(tarjeta, "Debe tener 16 dígitos numéricos.");
         valid = false;
       }
-    }
 
-    if (cvv.value.trim().length < 3 || cvv.value.trim().length > 4) {
-      showError(cvv, "Debe tener 3 o 4 dígitos.");
-      valid = false;
+      if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(fecha.value.trim())) {
+        showError(fecha, "Usa formato MM/YY.");
+        valid = false;
+      } else {
+        const [mes, año] = fecha.value.trim().split("/").map(Number);
+        const expDate = new Date(2000 + año, mes);
+        const now = new Date();
+        if (expDate < now) {
+          showError(fecha, "Tarjeta vencida.");
+          valid = false;
+        }
+      }
+
+      if (cvv.value.trim().length < 3 || cvv.value.trim().length > 4) {
+        showError(cvv, "Debe tener 3 o 4 dígitos.");
+        valid = false;
+      }
     }
 
     if (!valid) {
@@ -203,7 +253,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       apellido: apellido.value.trim(),
       telefono: telefono.value.trim(),
       titular: titular.value.trim(),
-      metodo: form.metodo.value,
+      metodo: metodo.value,
+      cuotas: cuotasSelect.value || 1,
       carrito: cart,
       subtotal,
       descuento,
