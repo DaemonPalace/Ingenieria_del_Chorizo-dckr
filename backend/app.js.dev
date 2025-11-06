@@ -989,6 +989,62 @@ app.get("/api/images/products/:filename", async (req, res) => {
   }
 });
 
+app.get(
+  "/api/historial-compras",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { from, to } = req.query;
+      const params = [];
+      let where = "";
+
+      if (from) {
+        params.push(from);
+        where += ` WHERE DATE(p.fecha_pedido) >= $${params.length}`;
+      }
+      if (to) {
+        params.push(to);
+        where += `${where ? " AND" : " WHERE"} DATE(p.fecha_pedido) <= $${
+          params.length
+        }`;
+      }
+
+      const q = `
+      SELECT
+        u.correo,
+        u.nombre,
+        p.id_pedido,
+        p.fecha_pedido AS fecha,
+        p.estado,
+        p.total,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id_producto', pr.id_producto,
+            'nombre', pr.nombre,
+            'cantidad', dp.cantidad,
+            'subtotal', dp.subtotal
+          )
+          ORDER BY pr.nombre
+        ) AS productos
+      FROM Pedido p
+      JOIN Usuario u       ON u.id_usuario = p.id_usuario
+      JOIN DetallePedido dp ON dp.id_pedido = p.id_pedido
+      JOIN Producto pr     ON pr.id_producto = dp.id_producto
+      ${where}
+      GROUP BY u.correo, u.nombre, p.id_pedido, p.fecha_pedido, p.estado, p.total
+      ORDER BY p.fecha_pedido DESC;
+    `;
+
+      const { rows } = await pool.query(q, params);
+      res.json(rows);
+    } catch (err) {
+      console.error("Error en /api/historial-compras:", err);
+      next(err);
+    }
+  }
+);
+
 // ===============================
 // 💬 Comments Endpoints
 // ===============================
