@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ArepAbuelas — Recibo</title>
+  <link rel="icon" href="./img/logoarepabuela.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/header&footer.css"/>
+  <style>
+    body{ background:#D69E32; font-family:'Questrial',sans-serif; color:#3C2E26; margin:0; }
+    .wrap{ max-width:900px; margin:32px auto 80px; padding:0 16px; }
+    .card{
+      background:#fff8e7; border-radius:20px; box-shadow:0 4px 10px rgba(0,0,0,.2);
+      padding:28px;
+    }
+    h1,h2{ font-family:'Anton',sans-serif; margin:0 0 10px; }
+    .muted{ opacity:.85; margin:0 0 20px; }
+    .grid{ display:grid; gap:8px; }
+    .row{ display:flex; justify-content:space-between; padding:6px 0; }
+    .total{ border-top:2px solid #3C2E26; margin-top:10px; padding-top:10px; font-weight:700; font-size:1.2rem; }
+    .btns{ display:flex; gap:10px; margin-top:18px; }
+    .btn{
+      background:#3C2E26; color:#fff; border:none; border-radius:12px; padding:10px 14px;
+      cursor:pointer; text-decoration:none; display:inline-block;
+    }
+    .tag{ display:inline-block; padding:4px 10px; border-radius:999px; background:#f0d078; font-weight:600; }
+    .items { margin:12px 0 4px; }
+    .item { display:flex; justify-content:space-between; margin:4px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="dropdown">
+      <button class="dropbtn"><img src="./img/Menu_Hamburgesa.png" alt="Menú"></button>
+      <div class="dropdown-content">
+        <a href="./index.html">Inicio</a>
+        <a href="./carta.html">Carta</a>
+        <a href="./carrito.html">Carrito</a>
+      </div>
+    </div>
+    <h1><a href="./index.html">ArepAbuelas</a></h1>
+    <div><a href="./carrito.html"><img src="./img/carritoIcono.png" alt="Carrito"></a></div>
+  </header>
+
+  <div class="wrap">
+    <div class="card" id="reciboCard">
+      <h2>¡Gracias por tu compra!</h2>
+      <p class="muted">Tu pedido ha sido recibido y está en procesamiento.</p>
+
+      <div class="grid">
+        <div class="row"><span>Número de pedido</span><strong id="orderId">—</strong></div>
+        <div class="row"><span>Fecha</span><span id="fecha">—</span></div>
+        <div class="row"><span>Cliente</span><span id="cliente">—</span></div>
+        <div class="row"><span>Método de pago</span><span id="metodo">—</span></div>
+        <div class="row"><span>Descuento aplicado</span><span id="tagDesc" class="tag" style="display:none;">10% primera compra</span></div>
+      </div>
+
+      <div class="items" id="items"></div>
+
+      <div class="row"><span>Subtotal</span><span id="subtotal">—</span></div>
+      <div class="row" id="rowDesc" style="display:none;"><span>Descuento</span><span id="descuento">—</span></div>
+      <div class="row total"><span>Total</span><span id="total">—</span></div>
+
+      <div class="btns">
+        <a class="btn" href="./carta.html">Seguir comprando</a>
+        <button class="btn" id="btnImprimir">Imprimir recibo</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const data = JSON.parse(sessionStorage.getItem('lastOrder') || 'null');
+      if(!data){ window.location.href = './carta.html'; return; }
+
+      const fmt = v => '$' + Number(v||0).toLocaleString('es-CO');
+
+      document.getElementById('orderId').textContent = data.orderId ? ('#' + data.orderId) : '—';
+      document.getElementById('fecha').textContent = new Date(data.fecha || Date.now()).toLocaleString('es-CO');
+      document.getElementById('cliente').textContent = `${data.nombre || ''} ${data.apellido || ''}`.trim() || data.correo || '—';
+      document.getElementById('metodo').textContent = (data.metodo || 'tarjeta').toUpperCase();
+
+      // Items
+      const $items = document.getElementById('items');
+      (data.carrito || []).forEach(it=>{
+        const row = document.createElement('div');
+        row.className = 'item';
+        row.innerHTML = `<span>${it.name} x${it.quantity}</span><span>${fmt(it.price * it.quantity)}</span>`;
+        $items.appendChild(row);
+      });
+
+      // Totales
+      document.getElementById('subtotal').textContent = fmt(data.subtotal);
+      if((data.descuento||0) > 0){
+        document.getElementById('descuento').textContent = '- ' + fmt(data.descuento);
+        document.getElementById('rowDesc').style.display = '';
+        document.getElementById('tagDesc').style.display = 'inline-block';
+      }
+      document.getElementById('total').textContent = fmt(data.total);
+
+      // Imprimir
+      document.getElementById('btnImprimir').addEventListener('click', ()=>window.print());
+    })();
+  </script>
+</body>
+</html>
