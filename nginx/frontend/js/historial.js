@@ -1,20 +1,26 @@
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("📜 Historial de compras — init");
 
-  // Config
+  // ==========================
+  // 🔐 Sesión
+  // ==========================
   const API_BASE = `${window.location.origin}/api`;
   const token = sessionStorage.getItem("authToken");
-  const role  = (sessionStorage.getItem("userRole") || "").toLowerCase();
-  const expiresAt = sessionStorage.getItem("tokenExpiresAt");
+  const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
+  const expiresAt = parseInt(
+    sessionStorage.getItem("tokenExpiresAt") || "0",
+    10
+  );
   const now = Date.now();
 
-  // Validación de sesión (simple)
-  if (!token || !role || !expiresAt || now > parseInt(expiresAt, 10)) {
+  // Sesión inválida o expirada
+  if (!token || !role || !expiresAt || now > expiresAt) {
     sessionStorage.clear();
     window.location.replace("/login.html");
     return;
   }
-  if (!["admin","superadmin"].includes(role)) {
+  // Solo admin / superadmin
+  if (!["admin", "superadmin"].includes(role)) {
     sessionStorage.clear();
     window.location.replace("/index.html");
     return;
@@ -23,7 +29,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Mostrar UI
   document.body.classList.add("loaded");
 
-  // Logout
+  // ==========================
+  // 🔚 Logout
+  // ==========================
   const logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
@@ -35,76 +43,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Helpers
+  // ==========================
+  // 🧩 Helpers
+  // ==========================
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
   const $tbody = document.querySelector("#tablaHistorial tbody");
-  const $filtroTexto = document.getElementById("filtroTexto");
-  const $filtroFecha = document.getElementById("filtroFecha");
-  const $btnLimpiar   = document.getElementById("btnLimpiar");
-
-  let DATA = [];
 
   const fmtCOP = (n) =>
-    Number(n || 0).toLocaleString("es-CO", { style: "currency", currency: "COP" });
+    Number(n || 0).toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+      maximumFractionDigits: 0,
+    });
 
-  const fmtFecha = (d) => d ? new Date(d).toLocaleString("es-CO") : "—";
+  const fmtFecha = (d) => (d ? new Date(d).toLocaleString("es-CO") : "—");
 
-  const productosTxt = (arr=[]) =>
-    arr.map(p => `${p.nombre} (x${p.cantidad})`).join(", ");
-
-  function render(items){
-    if (!items || !items.length) {
-      $tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No hay compras registradas.</td></tr>`;
+  function render(items = []) {
+    if (!items.length) {
+      $tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center">No hay compras registradas.</td></tr>`;
       return;
     }
-    $tbody.innerHTML = items.map(c => `
-      <tr>
-        <td>${c.correo || "—"}</td>
-        <td>${c.nombre || "—"}</td>
-        <td>${c.telefono || "—"}</td>
-        <td>${productosTxt(c.productos)}</td>
-        <td class="text-end">${fmtCOP(c.total)}</td>
-        <td>${fmtFecha(c.fecha)}</td>
-      </tr>
-    `).join("");
+
+    $tbody.innerHTML = items
+      .map((c) => {
+        const id = c.id_pedido ?? c.id ?? "—";
+        const correo = c.correo ?? "—";
+        const nombre = c.nombre ?? "—";
+        const total = fmtCOP(c.total);
+        const fecha = fmtFecha(c.fecha);
+
+        return `
+          <tr>
+            <td>${id}</td>
+            <td>${correo}</td>
+            <td>${nombre}</td>
+            <td class="text-end">${total}</td>
+            <td>${fecha}</td>
+          </tr>`;
+      })
+      .join("");
   }
 
-  function aplicarFiltros(){
-    const q = ($filtroTexto.value || "").toLowerCase().trim();
-    const f = $filtroFecha.value || ""; // yyyy-mm-dd
-    const out = DATA.filter(c => {
-      const okText = !q ||
-        (c.correo || "").toLowerCase().includes(q) ||
-        (c.nombre || "").toLowerCase().includes(q);
-      const okDate = !f || (c.fecha && new Date(c.fecha).toISOString().slice(0,10) === f);
-      return okText && okDate;
-    });
-    render(out);
-  }
+  // ==========================
+  // 🚚 Carga de datos
+  // ==========================
+  async function cargar() {
+    try {
+      // Estado de “cargando…”
+      $tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Cargando…</td></tr>`;
 
-  $filtroTexto.addEventListener("input", aplicarFiltros);
-  $filtroFecha.addEventListener("change", aplicarFiltros);
-  $btnLimpiar.addEventListener("click", () => {
-    $filtroTexto.value = "";
-    $filtroFecha.value = "";
-    render(DATA);
-  });
-
-  // Carga de datos
-  async function cargar(){
-    try{
       const res = await fetch(`${API_BASE}/historial-compras`, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-      DATA = await res.json();
-      // Orden descendente por fecha si viene
-      DATA.sort((a,b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
-      render(DATA);
-    }catch(err){
+
+      if (res.status === 401) {
+        sessionStorage.clear();
+        window.location.replace("/login.html");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      }
+
+      let data = await res.json();
+      if (!Array.isArray(data)) data = [];
+
+      // Ordenar por fecha desc si existe
+      data.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+
+      render(data);
+    } catch (err) {
       console.error("❌ Error al cargar historial:", err);
-      $tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Error al cargar el historial.</td></tr>`;
+      $tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Error al cargar el historial.</td></tr>`;
     }
   }
 
