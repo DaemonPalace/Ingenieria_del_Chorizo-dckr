@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("🚀 Carta cargada correctamente");
   const API_BASE = `${window.location.origin}/api`;
   const $list = document.getElementById("menu-list");
+
   // ==========================================================
   // 🧮 Utilidades
   // ==========================================================
@@ -11,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
       currency: "COP",
       maximumFractionDigits: 0,
     }).format(Number(value || 0));
+
   const fixImageURL = (url) => {
     try {
       if (!url) return "./img/no-image.png";
@@ -23,21 +25,21 @@ document.addEventListener("DOMContentLoaded", () => {
       return "./img/no-image.png";
     }
   };
+
   // ==========================================================
   // 🛒 Carrito local con expiración (20 min)
   // ==========================================================
   const CART_KEY = "cart";
   const CART_TTL_MS = 20 * 60 * 1000; // 20 minutos
+
   const getCart = () => {
     try {
       const data = JSON.parse(localStorage.getItem(CART_KEY) || "null");
-      // Si no hay datos o no es un formato válido
       if (!data || typeof data !== "object" || !Array.isArray(data.items)) {
         console.warn("⚠️ Carrito vacío o corrupto. Reiniciando...");
         return [];
       }
       const { createdAt, items } = data;
-      // Expira el carrito después de 20 minutos
       if (Date.now() - createdAt > CART_TTL_MS) {
         console.warn("🕒 Carrito expirado — limpiando.");
         localStorage.removeItem(CART_KEY);
@@ -49,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return [];
     }
   };
+
   const setCart = (items) => {
     try {
       localStorage.setItem(
@@ -60,9 +63,9 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("❌ Error guardando carrito:", err);
     }
   };
+
   const addToCart = (product) => {
     let cart = getCart();
-    // Garantiza que siempre sea un arreglo
     if (!Array.isArray(cart)) {
       console.warn("⚠️ Reiniciando carrito dañado...");
       cart = [];
@@ -83,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log(`🛒 Producto añadido: ${product.name}`);
     showToast(`${product.name} añadido al carrito 🧺`);
   };
+
   // ==========================================================
   // 🎨 Renderizado de productos
   // ==========================================================
@@ -95,11 +99,14 @@ document.addEventListener("DOMContentLoaded", () => {
         </p>`;
       return;
     }
+
     const tpl = items
       .map((p) => {
         const img = fixImageURL(p.image);
         return `
-        <article class="card" role="group" aria-label="${p.name}" data-product='${JSON.stringify(p)}'>
+        <article class="card" role="group" aria-label="${
+          p.name
+        }" data-product='${JSON.stringify(p)}'>
           <img class="card__img" src="${img}" alt="${p.name}"
                onerror="this.src='./img/no-image.png'">
           <div class="card__body">
@@ -118,9 +125,11 @@ document.addEventListener("DOMContentLoaded", () => {
         </article>`;
       })
       .join("");
+
     $list.innerHTML = tpl;
     console.log(`✅ Renderizados ${items.length} productos.`);
   };
+
   // ==========================================================
   // 🔄 Mapeo del backend
   // ==========================================================
@@ -136,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
       p.image ??
       "./img/no-image.png",
   });
+
   // ==========================================================
   // 🌐 Fetch de productos desde API pública
   // ==========================================================
@@ -155,8 +165,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return [];
     }
   };
+
   // ==========================================================
-  // 🧠 Delegación de eventos (Añadir al carrito o redirigir a detalle)
+  // 🧠 Delegación de eventos
   // ==========================================================
   document.body.addEventListener("click", (ev) => {
     const btn = ev.target.closest(".btn-add");
@@ -189,17 +200,38 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+
   // ==========================================================
-  // 🔔 Pequeña notificación visual (toast)
+  // 🔔 Toast (autocierre a los 5s y clic para cerrar)
   // ==========================================================
   const showToast = (msg) => {
-    let toast = document.createElement("div");
+    const toast = document.createElement("div");
     toast.className = "toast-msg";
     toast.textContent = msg;
     document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add("visible"), 100);
 
+    // entrar con animación
+    requestAnimationFrame(() => toast.classList.add("visible"));
+
+    // función de ocultar y remover
+    const hide = () => {
+      toast.classList.remove("visible");
+      toast.addEventListener("transitionend", () => toast.remove(), {
+        once: true,
+      });
+    };
+
+    // autocierre a los 5s
+    const HIDE_MS = 5000;
+    const timer = setTimeout(hide, HIDE_MS);
+
+    // cierre manual con clic
+    toast.addEventListener("click", () => {
+      clearTimeout(timer);
+      hide();
+    });
   };
+
   // CSS dinámico para el toast
   const style = document.createElement("style");
   style.textContent = `
@@ -217,6 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
       transform: translateY(20px);
       transition: all 0.4s ease;
       z-index: 9999;
+      cursor: pointer; /* clic para cerrar */
     }
     .toast-msg.visible {
       opacity: 1;
@@ -238,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch(`${API_BASE}/coupons/check`, {
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -255,8 +288,9 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("🎟️ Coupon status:", data);
 
       if (data.hasCoupon) {
-        showToast("🎉 ¡Tienes un cupón disponible del 10% para nuevos usuarios!");
-        // You can store this info for later use (e.g. at checkout)
+        showToast(
+          "🎉 ¡Tienes un cupón disponible del 10% para nuevos usuarios!"
+        );
         sessionStorage.setItem("hasCoupon", "true");
       } else {
         sessionStorage.setItem("hasCoupon", "false");
@@ -269,14 +303,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-
   // ==========================================================
   // 🚀 Inicialización
   // ==========================================================
   (async () => {
     const products = await fetchProducts();
     render(products);
-
     await checkUserCoupon();
   })();
 });
