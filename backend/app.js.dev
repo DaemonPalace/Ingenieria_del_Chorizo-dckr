@@ -1109,7 +1109,7 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
       });
     }
 
-    if (tipo !== "tarjeta") {
+    if (tipo !== "debito" && tipo !== "credito") {
       return res.status(400).json({ error: "Tipo de pago inválido" });
     }
 
@@ -1222,6 +1222,68 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     next(err);
   } finally {
     client.release();
+  }
+});
+
+
+// ===============================
+// 🧾 GET Pedido Info (Receipt)
+// ===============================
+app.get("/api/pedidos/:id", authenticateToken, async (req, res, next) => {
+  try {
+    const pedidoId = req.params.id;
+    const userId = req.user.id; // from JWT auth
+
+    // 1️⃣ Get main order info + payment + user
+    const pedidoQuery = `
+      SELECT 
+        p.id_pedido,
+        p.fecha_pedido,
+        p.total,
+        p.estado,
+        u.nombre AS cliente_nombre,
+        u.correo AS cliente_correo,
+        COALESCE(pg.metodo, 'tarjeta') AS metodo_pago,
+        pg.fecha_pago
+      FROM Pedido p
+      JOIN Usuario u ON p.id_usuario = u.id_usuario
+      LEFT JOIN PagoSimulado pg ON p.id_pedido = pg.id_pedido
+      WHERE p.id_pedido = $1 AND p.id_usuario = $2
+      LIMIT 1;
+    `;
+    const pedidoResult = await pool.query(pedidoQuery, [pedidoId, userId]);
+
+    if (pedidoResult.rows.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const pedido = pedidoResult.rows[0];
+
+    // 2️⃣ Get item details (DetallePedido + Producto)
+    const detallesQuery = `
+      SELECT 
+        dp.id_producto,
+        pr.nombre,
+        dp.cantidad,
+        pr.precio,
+        dp.subtotal,
+        pr.imagen_url
+      FROM DetallePedido dp
+      JOIN Producto pr ON dp.id_producto = pr.id_producto
+      WHERE dp.id_pedido = $1;
+    `;
+    const detallesResult = await pool.query(detallesQuery, [pedidoId]);
+
+    pedido.items = detallesResult.rows;
+
+    // 3️⃣ Compute subtotal and total (ensure values are numeric)
+    pedido.subtotal = detallesResult.rows.reduce((sum, it) => sum + Number(it.subtotal), 0);
+    pedido.total = Number(pedido.total);
+
+    res.json(pedido);
+  } catch (err) {
+    console.error("❌ Error al obtener pedido:", err);
+    next(err);
   }
 });
 
