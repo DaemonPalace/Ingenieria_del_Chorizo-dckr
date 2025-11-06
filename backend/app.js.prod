@@ -816,6 +816,102 @@ app.get("/api/images/products/:filename", async (req, res) => {
   }
 });
 
+// ===============================
+// 💬 Comments Endpoints
+// ===============================
+
+// POST /api/comments - Add a comment to a product
+app.post("/api/comments", authenticateToken, async (req, res, next) => {
+  console.log("Received /api/comments request:", { body: req.body });
+  try {
+    const { id_producto, comentario, calificacion } = req.body;
+    const missingFields = [];
+    if (!id_producto) missingFields.push("id_producto");
+    if (!comentario) missingFields.push("comentario");
+    if (!calificacion) missingFields.push("calificacion");
+    if (missingFields.length > 0) {
+      return res
+        .status(400)
+        .json({
+          error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+        });
+    }
+    if (calificacion < 1 || calificacion > 5) {
+      return res.status(400).json({ error: "Calificación debe estar entre 1 y 5" });
+    }
+    // Check if product exists
+    const productCheck = await pool.query(
+      "SELECT id_producto FROM Producto WHERE id_producto = $1",
+      [id_producto]
+    );
+    if (productCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    const result = await pool.query(
+      `
+      INSERT INTO Comentario (id_usuario, id_producto, comentario, calificacion)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+      `,
+      [req.user.id, id_producto, comentario, calificacion]
+    );
+    res.status(201).json({
+      message: "Comentario agregado exitosamente",
+      comment: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Comment creation error:", err);
+    next(err);
+  }
+});
+
+// GET /api/public/products/:id/comments - Get comments for a product (public)
+app.get("/api/public/products/:id/comments", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `
+      SELECT 
+        c.id_comentario,
+        c.comentario,
+        c.calificacion,
+        c.fecha,
+        u.nombre AS usuario_nombre
+      FROM Comentario c
+      JOIN Usuario u ON c.id_usuario = u.id_usuario
+      WHERE c.id_producto = $1
+      ORDER BY c.fecha DESC
+      `,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching comments:", err);
+    next(err);
+  }
+});
+
+// ===============================
+// 🎟️ Coupon Endpoints
+// ===============================
+
+// GET /api/coupons/check - Check if user has a coupon available
+app.get("/api/coupons/check", authenticateToken, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT cupon FROM Usuario WHERE id_usuario = $1",
+      [req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    res.json({ hasCoupon: result.rows[0].cupon });
+  } catch (err) {
+    console.error("Coupon check error:", err);
+    next(err);
+  }
+});
+
 app.listen(port, () => {
   console.log(`Backend running on port ${port}`);
 });
