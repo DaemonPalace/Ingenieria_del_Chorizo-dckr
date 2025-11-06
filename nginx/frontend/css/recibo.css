@@ -1,0 +1,103 @@
+/* Paleta ArepAbuelas */
+:root{
+  --gold:#D69E32;
+  --brown:#3C2E26;
+  --paper:#fff8e7;
+}
+
+body{
+  background: var(--gold);
+  color: var(--brown);
+  margin:0;
+  font-family:'Questrial',sans-serif;
+}
+
+.wrap{
+  max-width: 960px;
+  margin: 32px auto 80px;
+  padding: 0 16px;
+}
+
+.card{
+  background: var(--paper);
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  padding: 28px;
+}
+
+h1,h2,h3{
+  font-family: 'Anton', sans-serif;
+  margin: 0 0 10px;
+  color: var(--brown);
+}
+
+.muted{ opacity:.85; margin: 0 0 20px; }
+
+.grid{
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.row{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+}
+
+.items{
+  margin: 14px 0 6px;
+}
+.item{
+  display:flex;
+  justify-content:space-between;
+  margin: 4px 0;
+}
+
+.total{
+  border-top: 2px solid var(--brown);
+  margin-top: 10px;
+  padding-top: 10px;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.tag{
+  display:inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f0d078;
+  font-weight: 600;
+}
+
+.btns{ display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; }
+.btn{
+  background: var(--brown);
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  padding:10px 14px;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-block;
+  transition: transform .15s ease;
+}
+.btn:hover{ transform: scale(1.03); }
+
+/* Tira superior con estado */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#efd08a;
+  border-radius:12px;
+  padding:6px 10px;
+  margin-bottom:12px;
+  font-weight:600;
+}
+
+/* Responsive */
+@media (max-width: 768px){
+  .row{ gap: 10px; }
+}
