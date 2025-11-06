@@ -1088,91 +1088,143 @@ app.get("/api/coupons/check", authenticateToken, async (req, res, next) => {
 // ===============================
 // 💳 Payments Endpoint (Simulated)
 // ===============================
-// POST /api/payments - Process a simulated payment, store card info, and link to order
 app.post("/api/payments", authenticateToken, async (req, res, next) => {
   console.log("Received /api/payments request:", { body: req.body });
+
+  const client = await pool.connect();
+
   try {
-    const { correo, titular, numero_tarjeta, tipo, id_pedido } = req.body;
+    const { correo, titular, numero_tarjeta, tipo, carrito } = req.body;
+
+    // Validate input
     const missingFields = [];
     if (!titular) missingFields.push("titular");
     if (!numero_tarjeta) missingFields.push("numero_tarjeta");
     if (!tipo) missingFields.push("tipo");
-    if (!id_pedido) missingFields.push("id_pedido");
+    if (!Array.isArray(carrito) || carrito.length === 0)
+      missingFields.push("carrito (productos)");
     if (missingFields.length > 0) {
-      return res
-        .status(400)
-        .json({
-          error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
-        });
+      return res.status(400).json({
+        error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+      });
     }
-    // Validate tipo (based on JS, it's 'tarjeta', but could be extended to 'credito'/'debito')
+
     if (tipo !== "tarjeta") {
       return res.status(400).json({ error: "Tipo de pago inválido" });
     }
-    // Validate card number (simple check)
+
     if (numero_tarjeta.length !== 16 || isNaN(numero_tarjeta)) {
       return res.status(400).json({ error: "Número de tarjeta inválido" });
     }
-    // Validate that the order exists and belongs to the user
-    const orderCheck = await pool.query(
+
+    // ✅ Start transaction
+    await client.query("BEGIN");
+
+    // =======================================
+    // 1️⃣ Create new order (Pedido)
+    // =======================================
+    const pedidoResult = await client.query(
       `
-      SELECT 1 FROM Pedido
-      WHERE id_pedido = $1 AND id_usuario = $2
+      INSERT INTO Pedido (id_usuario, estado, total)
+      VALUES ($1, 'pendiente', 0.00)
+      RETURNING id_pedido
       `,
-      [id_pedido, req.user.id]
+      [req.user.id]
     );
-    if (orderCheck.rowCount === 0) {
-      return res.status(400).json({ error: "Pedido inválido o no pertenece al usuario" });
+    const id_pedido = pedidoResult.rows[0].id_pedido;
+
+    let total = 0;
+
+    // =======================================
+    // 2️⃣ Insert each item in DetallePedido
+    // =======================================
+    for (const item of carrito) {
+      const { id_producto, cantidad } = item;
+
+      // Get product price
+      const prodResult = await client.query(
+        "SELECT precio FROM Producto WHERE id_producto = $1",
+        [id_producto]
+      );
+
+      if (prodResult.rows.length === 0) {
+        throw new Error(`Producto con ID ${id_producto} no encontrado`);
+      }
+
+      const precio = parseFloat(prodResult.rows[0].precio);
+      const subtotal = precio * cantidad;
+      total += subtotal;
+
+      await client.query(
+        `
+        INSERT INTO DetallePedido (id_pedido, id_producto, cantidad, subtotal)
+        VALUES ($1, $2, $3, $4)
+        `,
+        [id_pedido, id_producto, cantidad, subtotal]
+      );
     }
-    // Get last 4 digits
+
+    // =======================================
+    // 3️⃣ Update Pedido total
+    // =======================================
+    await client.query(
+      `UPDATE Pedido SET total = $1, estado = 'pagado' WHERE id_pedido = $2`,
+      [total, id_pedido]
+    );
+
+    // =======================================
+    // 4️⃣ Store simulated card info
+    // =======================================
     const ultimos_4_digitos = numero_tarjeta.slice(-4);
-    // Insert into tarjetasimulada
-    const cardResult = await pool.query(
+    const tarjetaResult = await client.query(
       `
-      INSERT INTO tarjetasimulada
-        (id_usuario, ultimos_4_digitos, tipo, nombre_titular)
+      INSERT INTO TarjetaSimulada (id_usuario, ultimos_4_digitos, tipo, nombre_titular)
       VALUES ($1, $2, $3, $4)
       RETURNING id_tarjeta
       `,
       [req.user.id, ultimos_4_digitos, tipo, titular]
     );
-    const id_tarjeta = cardResult.rows[0].id_tarjeta;
-    // Insert into PagoSimulado
-    const paymentResult = await pool.query(
+    const id_tarjeta = tarjetaResult.rows[0].id_tarjeta;
+
+    // =======================================
+    // 5️⃣ Record payment in PagoSimulado
+    // =======================================
+    const referencia = `REF-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    await client.query(
       `
-      INSERT INTO PagoSimulado
-        (id_usuario, id_pedido, metodo, estado, referencia)
+      INSERT INTO PagoSimulado (id_usuario, id_pedido, metodo, estado, referencia)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING id_pago
       `,
-      [req.user.id, id_pedido, 'tarjeta', 'exitoso', `tarjeta-${id_tarjeta}`]
+      [req.user.id, id_pedido, tipo, "exitoso", referencia]
     );
-    const id_pago = paymentResult.rows[0].id_pago;
-    // Update Pedido estado to 'pagado'
-    await pool.query(
-      `
-      UPDATE Pedido
-      SET estado = 'pagado'
-      WHERE id_pedido = $1
-      `,
-      [id_pedido]
-    );
+
+    // =======================================
+    // 6️⃣ Commit transaction
+    // =======================================
+    await client.query("COMMIT");
+
     console.log("✅ Pago simulado procesado:", {
       id_tarjeta,
-      id_pago,
-      correo,
       id_pedido,
+      correo,
     });
+
     res.status(201).json({
       message: "Pago procesado exitosamente",
+      id_pedido,
+      total,
       id_tarjeta,
-      id_pago,
+      referencia,
     });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("❌ Payment error:", err);
     next(err);
+  } finally {
+    client.release();
   }
 });
+
 
 app.listen(port, () => {
   console.log(`Backend running on port ${port}`);
