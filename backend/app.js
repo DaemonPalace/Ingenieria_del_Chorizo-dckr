@@ -1109,7 +1109,7 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
       });
     }
 
-    if (tipo !== "tarjeta") {
+    if (tipo !== "debito" | "credito" ) {
       return res.status(400).json({ error: "Tipo de pago inválido" });
     }
 
