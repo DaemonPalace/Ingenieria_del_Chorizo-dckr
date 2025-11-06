@@ -912,6 +912,60 @@ app.get("/api/coupons/check", authenticateToken, async (req, res, next) => {
   }
 });
 
+
+// ===============================
+// 💳 Payments Endpoint (Simulated)
+// ===============================
+// POST /api/payments - Process a simulated payment and store card info
+app.post("/api/payments", authenticateToken, async (req, res, next) => {
+  console.log("Received /api/payments request:", { body: req.body });
+  try {
+    const { correo, titular, numero_tarjeta, tipo } = req.body;
+    const missingFields = [];
+    if (!titular) missingFields.push("titular");
+    if (!numero_tarjeta) missingFields.push("numero_tarjeta");
+    if (!tipo) missingFields.push("tipo");
+    if (missingFields.length > 0) {
+      return res
+        .status(400)
+        .json({
+          error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+        });
+    }
+    // Validate tipo (based on JS, it's 'tarjeta', but could be extended to 'credito'/'debito')
+    if (tipo !== "tarjeta") {
+      return res.status(400).json({ error: "Tipo de pago inválido" });
+    }
+    // Validate card number (simple check)
+    if (numero_tarjeta.length !== 16 || isNaN(numero_tarjeta)) {
+      return res.status(400).json({ error: "Número de tarjeta inválido" });
+    }
+    // Get last 4 digits
+    const ultimos_4_digitos = numero_tarjeta.slice(-4);
+    // Insert into tarjetasimulada
+    const result = await pool.query(
+      `
+      INSERT INTO tarjetasimulada 
+        (id_usuario, ultimos_4_digitos, tipo, nombre_titular)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id_tarjeta
+      `,
+      [req.user.id, ultimos_4_digitos, tipo, titular]
+    );
+    console.log("✅ Pago simulado procesado:", {
+      id_tarjeta: result.rows[0].id_tarjeta,
+      correo,
+    });
+    res.status(201).json({
+      message: "Pago procesado exitosamente",
+      id_tarjeta: result.rows[0].id_tarjeta,
+    });
+  } catch (err) {
+    console.error("❌ Payment error:", err);
+    next(err);
+  }
+});
+
 app.listen(port, () => {
   console.log(`Backend running on port ${port}`);
 });
