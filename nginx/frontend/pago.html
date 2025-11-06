@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ArepAbuelas — Pago</title>
-  <link rel="icon" href="./img/logoarepabuela.png" type="image/png">
+  <link rel="icon" href="./img/logoarepabuela.png" type="image/png" />
 
   <!-- Fuentes -->
   <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
@@ -16,22 +16,23 @@
   <link rel="stylesheet" href="./css/index.css" />
   <link rel="stylesheet" href="./css/pago.css" />
 
+  <!-- Scripts -->
   <script src="./js/pago.js" defer></script>
-  <script src="../js/logout.js"></script>
+  <script src="./js/logout.js" defer></script>
 </head>
+
 <body>
-  <!-- Header consistente con tus otras vistas -->
+  <!-- HEADER -->
   <header>
     <div class="dropdown">
       <button class="dropbtn" aria-label="Abrir menú">
-        <img src="./img/Menu_Hamburgesa.png" alt="Menú">
+        <img src="./img/Menu_Hamburgesa.png" alt="Menú" />
       </button>
       <div class="dropdown-content">
         <a href="./index.html">Inicio</a>
         <a href="./carrito.html">Carrito de Compras</a>
-        <a href="./login.html">Login</a>
-        <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
-        
+        <a href="./login.html" id="loginLink">Login</a>
+        <a href="#" id="logoutBtn">Cerrar sesión</a>
       </div>
     </div>
 
@@ -39,103 +40,117 @@
 
     <div>
       <a href="./carrito.html" aria-label="Ir al carrito">
-        <img src="./img/carritoIcono.png" alt="Carrito">
+        <img src="./img/carritoIcono.png" alt="Carrito" />
       </a>
     </div>
   </header>
 
+  <!-- MAIN -->
   <main class="main">
     <section class="checkout-container">
-      <!-- Formulario -->
+
+      <!-- FORMULARIO DE PAGO -->
       <div class="form-section">
         <h2>Pago</h2>
         <p class="subtitle">Completa tus datos y método de pago</p>
 
-        <form id="formPago">
+        <form id="formPago" novalidate>
           <h3>Datos personales</h3>
+
           <label for="correo">Correo electrónico *</label>
-          <input type="email" id="correo" name="correo" required>
+          <input type="email" id="correo" name="correo" required />
 
           <div class="input-row">
             <div>
               <label for="nombre">Nombre *</label>
-              <input type="text" id="nombre" name="nombre" required>
+              <input type="text" id="nombre" name="nombre" required />
             </div>
             <div>
               <label for="apellido">Apellido *</label>
-              <input type="text" id="apellido" name="apellido" required>
+              <input type="text" id="apellido" name="apellido" required />
             </div>
           </div>
 
           <label for="telefono">Teléfono / Móvil *</label>
-          <input type="tel" id="telefono" name="telefono" required>
+          <input type="tel" id="telefono" name="telefono" required />
 
-          <hr>
+          <hr />
 
           <h3>Detalles de la tarjeta</h3>
+
           <div class="tarjeta-opciones">
-            <button type="button" class="tarjeta-btn active" data-type="credito">Tarjeta de crédito</button>
-            <button type="button" class="tarjeta-btn" data-type="debito">Tarjeta de débito</button>
+            <button type="button" class="tarjeta-btn active" data-type="credito">
+              Tarjeta de crédito
+            </button>
+            <button type="button" class="tarjeta-btn" data-type="debito">
+              Tarjeta de débito
+            </button>
           </div>
 
-          <label for="numero">Número de tarjeta *</label>
-          <input type="text" id="numero" name="numero" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" required>
+          <!-- Campo oculto compatible con pago.js -->
+          <select id="metodo" name="metodo" style="display:none;">
+            <option value="tarjeta" selected>Tarjeta</option>
+          </select>
+
+          <label for="tarjeta">Número de tarjeta *</label>
+          <input type="text" id="tarjeta" name="tarjeta" maxlength="19" placeholder="XXXX XXXX XXXX XXXX" required />
 
           <div class="input-row">
             <div>
               <label for="titular">Nombre en la tarjeta *</label>
-              <input type="text" id="titular" name="titular" required>
+              <input type="text" id="titular" name="titular" required />
             </div>
           </div>
 
           <div class="input-row">
             <div>
-              <label for="vencimiento">Fecha de vencimiento *</label>
-              <div class="vencimiento">
-                <input type="text" id="mes" name="mes" maxlength="2" placeholder="MM" required>
-                <span>/</span>
-                <input type="text" id="ano" name="ano" maxlength="2" placeholder="AA" required>
-              </div>
+              <label for="fecha">Fecha de vencimiento *</label>
+              <input type="text" id="fecha" name="fecha" placeholder="MM/YY" maxlength="5" required />
             </div>
             <div>
               <label for="cvv">Código de seguridad *</label>
-              <input type="text" id="cvv" name="cvv" maxlength="4" placeholder="CVV" required>
+              <input type="text" id="cvv" name="cvv" maxlength="4" placeholder="CVV" required />
             </div>
           </div>
 
+          <!-- Botón principal -->
           <button type="submit" class="btn-pagar">Confirmar y pagar</button>
         </form>
       </div>
 
-      <!-- Resumen -->
+      <!-- RESUMEN DE COMPRA -->
       <div class="resumen-section">
         <h3>Resumen de compra</h3>
         <div id="resumenProductos"></div>
         <hr />
         <div class="totales">
           <p>Subtotal: <span id="subtotal">—</span></p>
-          <p class="descuento hidden" id="descuentoRow">Descuento (10%): <span id="descuento">—</span></p>
+          <p class="descuento hidden" id="descuentoRow">
+            Descuento (10%): <span id="descuento">—</span>
+          </p>
           <p class="total">Total: <span id="total">—</span></p>
         </div>
       </div>
     </section>
   </main>
 
+  <!-- FOOTER -->
   <footer class="footer">
     <div class="footer-content">
       <div class="footer-left">
         <a href="./index.html" class="logo">
-          <img src="./img/logoarepabuela.png" alt="ArepAbuelas Logo">
+          <img src="./img/logoarepabuela.png" alt="ArepAbuelas Logo" />
         </a>
         <div class="footer-address">
-          <p><strong>Dirección:</strong> Cra 69 #25B – 44 Of. 609,<br>Edificio World Business Port</p>
+          <p><strong>Dirección:</strong> Cra 69 #25B – 44 Of. 609,<br />Edificio World Business Port</p>
           <p><strong>Teléfono:</strong> 601 7034250</p>
         </div>
       </div>
+
       <div class="footer-right">
         <h2><a href="./register.html">Regístrate</a></h2>
         <div class="footer-social">
-          <img src="./img/RedesSociales.png" alt="Redes Sociales">
+          <img src="./img/RedesSociales.png" alt="Redes Sociales" />
         </div>
       </div>
     </div>
