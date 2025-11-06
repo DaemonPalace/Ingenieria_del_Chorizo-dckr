@@ -198,10 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     toast.textContent = msg;
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.add("visible"), 100);
-    setTimeout(() => {
-      toast.classList.remove("visible");
-      setTimeout(() => toast.remove(), 500);
-    }, 2500);
+
   };
   // CSS dinámico para el toast
   const style = document.createElement("style");
@@ -215,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
       padding: 10px 16px;
       border-radius: 12px;
       font-family: 'Questrial', sans-serif;
-      font-size: 14px;
+      font-size: 22px;
       opacity: 0;
       transform: translateY(20px);
       transition: all 0.4s ease;
@@ -227,11 +224,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   `;
   document.head.appendChild(style);
+
+  // ==========================================================
+  // 🎟️ Verificación de cupón para nuevos usuarios
+  // ==========================================================
+  const checkUserCoupon = async () => {
+    const token = sessionStorage.getItem("authToken");
+    if (!token) {
+      console.log("⚠️ No token found, skipping coupon check.");
+      return null;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/coupons/check`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          console.warn("🧾 Usuario no encontrado para verificación de cupón.");
+          return null;
+        }
+        throw new Error(`Error ${res.status}: ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      console.log("🎟️ Coupon status:", data);
+
+      if (data.hasCoupon) {
+        showToast("🎉 ¡Tienes un cupón disponible del 10% para nuevos usuarios!");
+        // You can store this info for later use (e.g. at checkout)
+        sessionStorage.setItem("hasCoupon", "true");
+      } else {
+        sessionStorage.setItem("hasCoupon", "false");
+      }
+
+      return data.hasCoupon;
+    } catch (err) {
+      console.error("❌ Error verificando cupón:", err);
+      return null;
+    }
+  };
+
+
   // ==========================================================
   // 🚀 Inicialización
   // ==========================================================
   (async () => {
     const products = await fetchProducts();
     render(products);
+
+    await checkUserCoupon();
   })();
 });

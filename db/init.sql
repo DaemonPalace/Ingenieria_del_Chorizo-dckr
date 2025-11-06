@@ -21,6 +21,7 @@ CREATE TABLE Usuario (
     password_hash VARCHAR(255) NOT NULL,
     foto_url TEXT NOT NULL,
     rol rol_usuario DEFAULT 'cliente' NOT NULL,
+    cupon BOOLEAN DEFAULT TRUE,
     aprobado BOOLEAN DEFAULT FALSE,
     aprobado_por INT REFERENCES Usuario(id_usuario)
         ON DELETE SET NULL ON UPDATE CASCADE,
@@ -143,19 +144,6 @@ CREATE TABLE ProductoDescuento (
 );
 
 -- ==========================================================
---   TABLA CUPONES
--- ==========================================================
-CREATE TABLE Cupon (
-    id_cupon SERIAL PRIMARY KEY,
-    codigo VARCHAR(50) UNIQUE NOT NULL,
-    descuento NUMERIC(5,2) CHECK (descuento >= 0 AND descuento <= 100),
-    fecha_expiracion DATE,
-    usado BOOLEAN DEFAULT FALSE,
-    id_usuario INT REFERENCES Usuario(id_usuario)
-        ON DELETE SET NULL ON UPDATE CASCADE
-);
-
--- ==========================================================
 --   TABLA TARJETA SIMULADA
 -- ==========================================================
 CREATE TABLE TarjetaSimulada (
@@ -203,7 +191,7 @@ COMMENT ON TABLE Comentario IS 'Almacena comentarios y calificaciones por produc
 COMMENT ON TABLE PagoSimulado IS 'Registra pagos simulados, sin almacenar información sensible.';
 COMMENT ON TABLE TarjetaSimulada IS 'Almacena datos simulados de tarjetas (solo últimos 4 dígitos).';
 COMMENT ON TABLE ProductoDescuento IS 'Relaciona productos con descuentos aplicables.';
-COMMENT ON TABLE Cupon IS 'Cupones de descuento asignados a usuarios.';
+
 
 -- ==========================================================
 --   ÍNDICES PARA MEJORAR RENDIMIENTO
@@ -216,7 +204,7 @@ CREATE INDEX idx_pedido_estado ON Pedido(estado);
 CREATE INDEX idx_detalle_pedido ON DetallePedido(id_pedido);
 CREATE INDEX idx_comentario_producto ON Comentario(id_producto);
 CREATE INDEX idx_favorito_usuario ON Favorito(id_usuario);
-CREATE INDEX idx_cupon_codigo ON Cupon(codigo);
+
 
 -- ==========================================================
 --   TRIGGERS Y FUNCIONES 
@@ -314,7 +302,7 @@ BEGIN
         SELECT 1 FROM Usuario WHERE correo = 'superadmin@arepabuelas.com'
     ) THEN
         INSERT INTO Usuario (
-            nombre, correo, password_hash, foto_url, rol, aprobado, fecha_registro
+            nombre, correo, password_hash, foto_url, rol, cupon, aprobado, fecha_registro
         )
         VALUES (
             'Super Admin',
@@ -322,6 +310,24 @@ BEGIN
             '$2b$10$S1VlRRgqBmYI0aP3tBQ/x.VfwsIV8Si3TFB/0ebaFHLr5UN/PPiua',
             'http://minio:9000/arepabuelas-users/camaronmacuil.jpg',
             'superadmin',
+            FALSE,
+            TRUE,
+            CURRENT_TIMESTAMP
+        );
+    END IF;
+        IF NOT EXISTS (
+        SELECT 1 FROM Usuario WHERE correo = 'supercliente@arepabuelas.com'
+    ) THEN
+        INSERT INTO Usuario (
+            nombre, correo, password_hash, foto_url, rol, cupon, aprobado, fecha_registro
+        )
+        VALUES (
+            'Super Cliente',
+            'supercliente@arepabuelas.com',
+            '$2b$10$S1VlRRgqBmYI0aP3tBQ/x.VfwsIV8Si3TFB/0ebaFHLr5UN/PPiua',
+            'http://minio:9000/arepabuelas-users/camaronmacuil.jpg',
+            'cliente',
+            TRUE,
             TRUE,
             CURRENT_TIMESTAMP
         );
@@ -340,7 +346,7 @@ VALUES
 ('Ajiaco', 'Ajiaco típico Boyacense con pollo, diferentes papas, arroz, aguacate y alcaparras.', 34900, 100, '/api/images/products/Ajiaco_mediano.png', TRUE),
 ('Lengua en Salsa', 'Lengua en salsa criolla de vino, típico de Boyacá. Acompañada de arroz blanco y ensalada.', 45700, 100, '/api/images/products/lenguasalsa.jpg', TRUE),
 ('Cocido Boyacense', 'Cocido típico boyacense con costilla de res, gallina criolla, papa criolla, cubios, chuguas, mazorca, habas, arroz y ají casero.', 42900, 100, '/api/images/products/cocidoboyacense.png', TRUE),
-('Merengón de Guanábana', 'Merengón de guanábana, crujiente por fuera y suave por dentro.', 22400, 100, '/api/images/products/Merengon_Grande.png', TRUE),
+('Merengón de Guanábana', 'Merengón de guanábana, crujiente por fuera y suave por dentro.', 22400, 100, '/api/images/products/Merengon_grande.png', TRUE),
 ('Cuajada con Melado', 'Postre típico colombiano con cuajada fresca y melado de panela, a veces con queso o arequipe.', 12700, 100, '/api/images/products/cuajada_mediana.png', TRUE),
 ('Migao Boyacense', 'Bebida caliente con chocolate derretido, queso fresco y arepa blanca desmenuzada.', 8000, 100, '/api/images/products/migao.jpg', TRUE),
 ('Agua', 'Botella de agua en plástico.', 3500, 100, '/api/images/products/agua.png', TRUE),
