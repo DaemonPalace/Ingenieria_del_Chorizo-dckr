@@ -1109,7 +1109,7 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
       });
     }
 
-    if (tipo !== "debito" | "credito" ) {
+    if (tipo !== "debito" && tipo !== "credito") {
       return res.status(400).json({ error: "Tipo de pago inválido" });
     }
 
@@ -1165,7 +1165,31 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     }
 
     // =======================================
-    // 3️⃣ Update Pedido total
+    // 3️⃣ Check coupon & apply discount
+    // =======================================
+    const userCouponCheck = await client.query(
+      "SELECT cupon FROM Usuario WHERE id_usuario = $1",
+      [req.user.id]
+    );
+
+    let descuento_aplicado = 0;
+    let cupon_usado = false;
+
+    if (userCouponCheck.rows.length > 0 && userCouponCheck.rows[0].cupon) {
+      // Apply 10% discount (can change the %)
+      descuento_aplicado = total * 0.1;
+      total -= descuento_aplicado;
+
+      // Mark coupon as used
+      await client.query(
+        "UPDATE Usuario SET cupon = FALSE WHERE id_usuario = $1",
+        [req.user.id]
+      );
+      cupon_usado = true;
+    }
+
+    // =======================================
+    // 4️⃣ Update Pedido total
     // =======================================
     await client.query(
       `UPDATE Pedido SET total = $1, estado = 'pagado' WHERE id_pedido = $2`,
@@ -1173,7 +1197,7 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     );
 
     // =======================================
-    // 4️⃣ Store simulated card info
+    // 5️⃣ Store simulated card info
     // =======================================
     const ultimos_4_digitos = numero_tarjeta.slice(-4);
     const tarjetaResult = await client.query(
@@ -1187,7 +1211,7 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     const id_tarjeta = tarjetaResult.rows[0].id_tarjeta;
 
     // =======================================
-    // 5️⃣ Record payment in PagoSimulado
+    // 6️⃣ Record payment in PagoSimulado
     // =======================================
     const referencia = `REF-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     await client.query(
@@ -1199,7 +1223,7 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     );
 
     // =======================================
-    // 6️⃣ Commit transaction
+    // 7️⃣ Commit transaction
     // =======================================
     await client.query("COMMIT");
 
@@ -1207,6 +1231,8 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
       id_tarjeta,
       id_pedido,
       correo,
+      cupon_usado,
+      descuento_aplicado,
     });
 
     res.status(201).json({
@@ -1215,6 +1241,8 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
       total,
       id_tarjeta,
       referencia,
+      cupon_usado,
+      descuento_aplicado,
     });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -1222,6 +1250,69 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     next(err);
   } finally {
     client.release();
+  }
+});
+
+
+
+// ===============================
+// 🧾 GET Pedido Info (Receipt)
+// ===============================
+app.get("/api/pedidos/:id", authenticateToken, async (req, res, next) => {
+  try {
+    const pedidoId = req.params.id;
+    const userId = req.user.id; // from JWT auth
+
+    // 1️⃣ Get main order info + payment + user
+    const pedidoQuery = `
+      SELECT 
+        p.id_pedido,
+        p.fecha_pedido,
+        p.total,
+        p.estado,
+        u.nombre AS cliente_nombre,
+        u.correo AS cliente_correo,
+        COALESCE(pg.metodo, 'tarjeta') AS metodo_pago,
+        pg.fecha_pago
+      FROM Pedido p
+      JOIN Usuario u ON p.id_usuario = u.id_usuario
+      LEFT JOIN PagoSimulado pg ON p.id_pedido = pg.id_pedido
+      WHERE p.id_pedido = $1 AND p.id_usuario = $2
+      LIMIT 1;
+    `;
+    const pedidoResult = await pool.query(pedidoQuery, [pedidoId, userId]);
+
+    if (pedidoResult.rows.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const pedido = pedidoResult.rows[0];
+
+    // 2️⃣ Get item details (DetallePedido + Producto)
+    const detallesQuery = `
+      SELECT 
+        dp.id_producto,
+        pr.nombre,
+        dp.cantidad,
+        pr.precio,
+        dp.subtotal,
+        pr.imagen_url
+      FROM DetallePedido dp
+      JOIN Producto pr ON dp.id_producto = pr.id_producto
+      WHERE dp.id_pedido = $1;
+    `;
+    const detallesResult = await pool.query(detallesQuery, [pedidoId]);
+
+    pedido.items = detallesResult.rows;
+
+    // 3️⃣ Compute subtotal and total (ensure values are numeric)
+    pedido.subtotal = detallesResult.rows.reduce((sum, it) => sum + Number(it.subtotal), 0);
+    pedido.total = Number(pedido.total);
+
+    res.json(pedido);
+  } catch (err) {
+    console.error("❌ Error al obtener pedido:", err);
+    next(err);
   }
 });
 
