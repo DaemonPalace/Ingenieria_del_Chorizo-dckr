@@ -1088,15 +1088,16 @@ app.get("/api/coupons/check", authenticateToken, async (req, res, next) => {
 // ===============================
 // 💳 Payments Endpoint (Simulated)
 // ===============================
-// POST /api/payments - Process a simulated payment and store card info
+// POST /api/payments - Process a simulated payment, store card info, and link to order
 app.post("/api/payments", authenticateToken, async (req, res, next) => {
   console.log("Received /api/payments request:", { body: req.body });
   try {
-    const { correo, titular, numero_tarjeta, tipo } = req.body;
+    const { correo, titular, numero_tarjeta, tipo, id_pedido } = req.body;
     const missingFields = [];
     if (!titular) missingFields.push("titular");
     if (!numero_tarjeta) missingFields.push("numero_tarjeta");
     if (!tipo) missingFields.push("tipo");
+    if (!id_pedido) missingFields.push("id_pedido");
     if (missingFields.length > 0) {
       return res
         .status(400)
@@ -1112,25 +1113,60 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     if (numero_tarjeta.length !== 16 || isNaN(numero_tarjeta)) {
       return res.status(400).json({ error: "Número de tarjeta inválido" });
     }
+    // Validate that the order exists and belongs to the user
+    const orderCheck = await pool.query(
+      `
+      SELECT 1 FROM Pedido
+      WHERE id_pedido = $1 AND id_usuario = $2
+      `,
+      [id_pedido, req.user.id]
+    );
+    if (orderCheck.rowCount === 0) {
+      return res.status(400).json({ error: "Pedido inválido o no pertenece al usuario" });
+    }
     // Get last 4 digits
     const ultimos_4_digitos = numero_tarjeta.slice(-4);
     // Insert into tarjetasimulada
-    const result = await pool.query(
+    const cardResult = await pool.query(
       `
-      INSERT INTO tarjetasimulada 
+      INSERT INTO tarjetasimulada
         (id_usuario, ultimos_4_digitos, tipo, nombre_titular)
       VALUES ($1, $2, $3, $4)
       RETURNING id_tarjeta
       `,
       [req.user.id, ultimos_4_digitos, tipo, titular]
     );
+    const id_tarjeta = cardResult.rows[0].id_tarjeta;
+    // Insert into PagoSimulado
+    const paymentResult = await pool.query(
+      `
+      INSERT INTO PagoSimulado
+        (id_usuario, id_pedido, metodo, estado, referencia)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id_pago
+      `,
+      [req.user.id, id_pedido, 'tarjeta', 'exitoso', `tarjeta-${id_tarjeta}`]
+    );
+    const id_pago = paymentResult.rows[0].id_pago;
+    // Update Pedido estado to 'pagado'
+    await pool.query(
+      `
+      UPDATE Pedido
+      SET estado = 'pagado'
+      WHERE id_pedido = $1
+      `,
+      [id_pedido]
+    );
     console.log("✅ Pago simulado procesado:", {
-      id_tarjeta: result.rows[0].id_tarjeta,
+      id_tarjeta,
+      id_pago,
       correo,
+      id_pedido,
     });
     res.status(201).json({
       message: "Pago procesado exitosamente",
-      id_tarjeta: result.rows[0].id_tarjeta,
+      id_tarjeta,
+      id_pago,
     });
   } catch (err) {
     console.error("❌ Payment error:", err);
