@@ -989,6 +989,243 @@ app.get("/api/images/products/:filename", async (req, res) => {
   }
 });
 
+// ===============================
+// 💬 Comments Endpoints
+// ===============================
+
+// POST /api/comments - Add a comment to a product
+app.post("/api/comments", authenticateToken, async (req, res, next) => {
+  console.log("Received /api/comments request:", { body: req.body });
+  try {
+    const { id_producto, comentario, calificacion } = req.body;
+    const missingFields = [];
+    if (!id_producto) missingFields.push("id_producto");
+    if (!comentario) missingFields.push("comentario");
+    if (!calificacion) missingFields.push("calificacion");
+    if (missingFields.length > 0) {
+      return res
+        .status(400)
+        .json({
+          error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+        });
+    }
+    if (calificacion < 1 || calificacion > 5) {
+      return res.status(400).json({ error: "Calificación debe estar entre 1 y 5" });
+    }
+    // Check if product exists
+    const productCheck = await pool.query(
+      "SELECT id_producto FROM Producto WHERE id_producto = $1",
+      [id_producto]
+    );
+    if (productCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    const result = await pool.query(
+      `
+      INSERT INTO Comentario (id_usuario, id_producto, comentario, calificacion)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+      `,
+      [req.user.id, id_producto, comentario, calificacion]
+    );
+    res.status(201).json({
+      message: "Comentario agregado exitosamente",
+      comment: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Comment creation error:", err);
+    next(err);
+  }
+});
+
+// GET /api/public/products/:id/comments - Get comments for a product (public)
+app.get("/api/public/products/:id/comments", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `
+      SELECT 
+        c.id_comentario,
+        c.comentario,
+        c.calificacion,
+        c.fecha,
+        u.nombre AS usuario_nombre
+      FROM Comentario c
+      JOIN Usuario u ON c.id_usuario = u.id_usuario
+      WHERE c.id_producto = $1
+      ORDER BY c.fecha DESC
+      `,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching comments:", err);
+    next(err);
+  }
+});
+
+// ===============================
+// 🎟️ Coupon Endpoints
+// ===============================
+
+// GET /api/coupons/check - Check if user has a coupon available
+app.get("/api/coupons/check", authenticateToken, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT cupon FROM Usuario WHERE id_usuario = $1",
+      [req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    res.json({ hasCoupon: result.rows[0].cupon });
+  } catch (err) {
+    console.error("Coupon check error:", err);
+    next(err);
+  }
+});
+
+// ===============================
+// 💳 Payments Endpoint (Simulated)
+// ===============================
+app.post("/api/payments", authenticateToken, async (req, res, next) => {
+  console.log("Received /api/payments request:", { body: req.body });
+
+  const client = await pool.connect();
+
+  try {
+    const { correo, titular, numero_tarjeta, tipo, carrito } = req.body;
+
+    // Validate input
+    const missingFields = [];
+    if (!titular) missingFields.push("titular");
+    if (!numero_tarjeta) missingFields.push("numero_tarjeta");
+    if (!tipo) missingFields.push("tipo");
+    if (!Array.isArray(carrito) || carrito.length === 0)
+      missingFields.push("carrito (productos)");
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+      });
+    }
+
+    if (tipo !== "tarjeta") {
+      return res.status(400).json({ error: "Tipo de pago inválido" });
+    }
+
+    if (numero_tarjeta.length !== 16 || isNaN(numero_tarjeta)) {
+      return res.status(400).json({ error: "Número de tarjeta inválido" });
+    }
+
+    // ✅ Start transaction
+    await client.query("BEGIN");
+
+    // =======================================
+    // 1️⃣ Create new order (Pedido)
+    // =======================================
+    const pedidoResult = await client.query(
+      `
+      INSERT INTO Pedido (id_usuario, estado, total)
+      VALUES ($1, 'pendiente', 0.00)
+      RETURNING id_pedido
+      `,
+      [req.user.id]
+    );
+    const id_pedido = pedidoResult.rows[0].id_pedido;
+
+    let total = 0;
+
+    // =======================================
+    // 2️⃣ Insert each item in DetallePedido
+    // =======================================
+    for (const item of carrito) {
+      const { id_producto, cantidad } = item;
+
+      // Get product price
+      const prodResult = await client.query(
+        "SELECT precio FROM Producto WHERE id_producto = $1",
+        [id_producto]
+      );
+
+      if (prodResult.rows.length === 0) {
+        throw new Error(`Producto con ID ${id_producto} no encontrado`);
+      }
+
+      const precio = parseFloat(prodResult.rows[0].precio);
+      const subtotal = precio * cantidad;
+      total += subtotal;
+
+      await client.query(
+        `
+        INSERT INTO DetallePedido (id_pedido, id_producto, cantidad, subtotal)
+        VALUES ($1, $2, $3, $4)
+        `,
+        [id_pedido, id_producto, cantidad, subtotal]
+      );
+    }
+
+    // =======================================
+    // 3️⃣ Update Pedido total
+    // =======================================
+    await client.query(
+      `UPDATE Pedido SET total = $1, estado = 'pagado' WHERE id_pedido = $2`,
+      [total, id_pedido]
+    );
+
+    // =======================================
+    // 4️⃣ Store simulated card info
+    // =======================================
+    const ultimos_4_digitos = numero_tarjeta.slice(-4);
+    const tarjetaResult = await client.query(
+      `
+      INSERT INTO TarjetaSimulada (id_usuario, ultimos_4_digitos, tipo, nombre_titular)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id_tarjeta
+      `,
+      [req.user.id, ultimos_4_digitos, tipo, titular]
+    );
+    const id_tarjeta = tarjetaResult.rows[0].id_tarjeta;
+
+    // =======================================
+    // 5️⃣ Record payment in PagoSimulado
+    // =======================================
+    const referencia = `REF-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    await client.query(
+      `
+      INSERT INTO PagoSimulado (id_usuario, id_pedido, metodo, estado, referencia)
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [req.user.id, id_pedido, tipo, "exitoso", referencia]
+    );
+
+    // =======================================
+    // 6️⃣ Commit transaction
+    // =======================================
+    await client.query("COMMIT");
+
+    console.log("✅ Pago simulado procesado:", {
+      id_tarjeta,
+      id_pedido,
+      correo,
+    });
+
+    res.status(201).json({
+      message: "Pago procesado exitosamente",
+      id_pedido,
+      total,
+      id_tarjeta,
+      referencia,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("❌ Payment error:", err);
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+
 app.listen(port, () => {
   console.log(`Backend running on port ${port}`);
 });
