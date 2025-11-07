@@ -47,8 +47,10 @@ New-Secret "jwt_secret"
 # === Copy app.js ===
 if ($Mode -eq "development") {
     Copy-Item "$ProjectRoot\backend\app.js.dev" "$ProjectRoot\backend\app.js" -Force
+    Copy-Item "$ProjectRoot\backend\upload_images_only.js.dev" "$ProjectRoot\backend\upload_images_only.js" -Force
 } else {
     Copy-Item "$ProjectRoot\backend\app.js.prod" "$ProjectRoot\backend\app.js" -Force
+    Copy-Item "$ProjectRoot\backend\upload_images_only.js.prod" "$ProjectRoot\backend\upload_images_only.js" -Force
 }
 
 # === docker-compose selection ===
