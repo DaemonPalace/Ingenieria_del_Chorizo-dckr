@@ -1,9 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
   const loginLink = document.querySelector('a[href$="login.html"]');
   const logoutLink = document.getElementById("logoutBtn");
+  const historialLink = document.querySelector('a[href$="historialcliente.html"]');
 
   if (!logoutLink || !loginLink) {
     console.warn("⚠️ No se encontraron los botones Login/Logout en el DOM.");
+    return;
+  }
+
+  if (!historialLink) {
+    console.warn("⚠️ No se encontro el boton Historial en el DOM.");
     return;
   }
 
@@ -18,10 +24,17 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     loginLink.style.display = "none";
     logoutLink.style.display = "block";
+    if (role === "cliente") {
+      historialLink.style.display = "block";
+    } else {
+      historialLink.style.display = "none";
+    }
   } else {
     console.log("🚪 Sin sesión activa. Mostrando botón de login.");
     loginLink.style.display = "block";
     logoutLink.style.display = "none";
+
+    historialLink.style.display = "none";
   }
 
   // --- Acción de logout ---
@@ -38,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Actualiza visibilidad inmediata
     loginLink.style.display = "block";
     logoutLink.style.display = "none";
+    historialLink.style.display = "none";
 
     alert("✅ Sesión cerrada con éxito.");
     window.location.href = "../login.html";
