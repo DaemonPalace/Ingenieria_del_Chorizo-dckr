@@ -52,8 +52,10 @@ generate_secret jwt_secret
 # 5. Copy the correct app.js -------------------------------------
 if [[ "$MODE" == "development" ]]; then
     APP_SRC="$PROJECT_ROOT/backend/app.js.dev"
+    APP_SRC2="$PROJECT_ROOT/backend/upload_images_only.js.dev"
 else
     APP_SRC="$PROJECT_ROOT/backend/app.js.prod"
+    APP_SRC2="$PROJECT_ROOT/backend/upload_images_only.js.prod"
 fi
 
 if [[ ! -f "$APP_SRC" ]]; then
@@ -65,7 +67,9 @@ if [[ ! -f "$APP_SRC" ]]; then
 fi
 
 cp -v "$APP_SRC" "$PROJECT_ROOT/backend/app.js"
+cp -v "$APP_SRC2" "$PROJECT_ROOT/backend/upload_images_only.js"
 echo "Copied $APP_SRC → backend/app.js"
+echo "Copied $APP_SRC2 → backend/upload_images_only.js"
 
 # 6. Copy the correct docker-compose file ------------------------
 if [[ "$MODE" == "development" ]]; then
@@ -115,7 +119,7 @@ echo
 echo "Stack is running!"
 echo "  Web: https://localhost"
 echo "  MinIO Console: https://localhost:9001"
-echo "  Credentials stored in: $PROJECT_ROOT/docker-vars.env"
+
 if [[ "$MODE" == "development" ]]; then
     echo "  Environment file: docker-vars.env"
 else
