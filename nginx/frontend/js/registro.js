@@ -10,6 +10,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const nombreInput = document.getElementById("nombre");
   const correoInput = document.getElementById("correo");
 
+  const token = sessionStorage.getItem("authToken");
+  const expiresAt = parseInt(
+    sessionStorage.getItem("tokenExpiresAt") || "0",
+    10
+  );
+
+  if (token && Date.now() < expiresAt) {
+    // Sesión vigente → mandamos al inicio
+    window.location.replace("/index.html");
+    return; // importante: no continúes cargando el script de login
+  } else if (token && Date.now() >= expiresAt) {
+    // Sesión expirada → limpiamos por si acaso
+    sessionStorage.clear();
+  }
   // 👁️ Mostrar / ocultar contraseñas
   [togglePassword, toggleConfirm].forEach((btn) => {
     btn.addEventListener("click", () => {

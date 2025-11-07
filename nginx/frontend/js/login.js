@@ -1,4 +1,22 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // 🚫 Evitar entrar a /login si ya hay sesión activa
+  const token = sessionStorage.getItem("authToken");
+  const expiresAt = parseInt(
+    sessionStorage.getItem("tokenExpiresAt") || "0",
+    10
+  );
+
+  if (token && Date.now() < expiresAt) {
+    // Sesión vigente → mandamos al inicio
+    window.location.replace("/index.html");
+    return; // importante: no continúes cargando el script de login
+  } else if (token && Date.now() >= expiresAt) {
+    // Sesión expirada → limpiamos por si acaso
+    sessionStorage.clear();
+  }
+
+  // ... (aquí ya va tu código actual de login)
+
   const form = document.getElementById("form-login");
 
   if (!form) {

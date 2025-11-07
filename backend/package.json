@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js & sleep 10 && npm run upload-images && tail -f /dev/null",
+    "upload-images": "node upload_images_only.js"
   },
   "dependencies": {
     "express": "^4.18.2",

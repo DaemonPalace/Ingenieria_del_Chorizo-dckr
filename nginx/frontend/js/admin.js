@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.body.style.display = "none";
 
   // ==========================
-  // 🌐 CONFIGURACIÓN AUTOMÁTICA DEL BACKEND
+  // 🌐 CONFIGURACIÓN DEL BACKEND
   // ==========================
   const API_BASE = `${window.location.origin}/api`;
   console.log("🔗 Conectando con API_BASE =", API_BASE);
@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================
   const token = sessionStorage.getItem("authToken");
   const email = sessionStorage.getItem("userEmail");
-  const role = sessionStorage.getItem("userRole");
+  const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
   const expiresAt = sessionStorage.getItem("tokenExpiresAt");
   const now = Date.now();
 
@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  if (!["admin", "superadmin"].includes(role.toLowerCase())) {
+  if (!["admin", "superadmin"].includes(role)) {
     console.warn("⚠️ Rol no autorizado:", role);
     sessionStorage.clear();
     window.location.replace("/index.html");
@@ -35,7 +35,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.body.style.display = "block";
   document.body.classList.add("loaded");
-  console.log("✅ Sesión válida, mostrando panel...");
+  console.log(`✅ Sesión válida — Rol: ${role}, Usuario: ${email}`);
+
+  // ==========================
+  // 🚪 LOGOUT (cerrar sesión global)
+  // ==========================
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (confirm("¿Deseas cerrar la sesión actual?")) {
+        console.log("👋 Cerrando sesión y limpiando storage...");
+        sessionStorage.clear();
+        // Si quieres también limpiar el carrito:
+        // localStorage.removeItem("cart");
+        window.location.href = "/login.html";
+      }
+    });
+  }
 
   // ==========================
   // 🔧 FUNCIONES AUXILIARES
@@ -47,7 +64,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const logError = (msg, err) => console.error(`❌ ${msg}`, err);
 
-  // Normaliza URLs de imagen
   const fixImageURL = (url) =>
     !url ? "/img/no-image.png" : url.replace("http://", "https://");
 
@@ -152,7 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           body: JSON.stringify({ rol: nuevoRol }),
         });
         if (!res.ok) throw new Error(await res.text());
-        alert(mensaje);
+        alert("✅ Rol actualizado correctamente.");
         await cargarUsuarios();
       } catch (err) {
         logError("Error actualizando rol:", err);

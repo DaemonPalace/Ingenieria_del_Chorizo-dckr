@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrito — ArepAbuelas</title>
+
+  <!-- Fuentes -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Questrial&display=swap" rel="stylesheet">
+  <link rel="icon" href="./img/logoarepabuela.png" type="image/png" />
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="./css/header&footer.css"/>
+  <link rel="stylesheet" href="./css/index.css"/>
+  <link rel="stylesheet" href="./css/carta.css"/>
+  <link rel="stylesheet" href="./css/carrito.css"/>
+
+  <!-- JS -->
+  <script src="./js/carrito.js" defer></script>
+  <script src="../js/logout.js"></script>
+</head>
+<body>
+  <!-- HEADER -->
+  <header>
+    <div class="dropdown">
+      <button class="dropbtn" aria-label="Abrir menú">
+        <img src="./img/Menu_Hamburgesa.png" alt="Menú">
+      </button>
+      <div class="dropdown-content">
+        <a href="./index.html">Inicio</a>
+        <a href="./carta.html">Carta</a>
+        <a href="./login.html">Login</a>
+        <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
+      </div>
+    </div>
+
+    <h1><a href="./index.html">ArepAbuelas</a></h1>
+
+    <div>
+      <a href="./carrito.html" aria-label="Ir al carrito">
+        <img src="./img/carritoIcono.png" alt="Carrito">
+      </a>
+    </div>
+  </header>
+
+  <!-- BOTÓN VOLVER -->
+  <a href="./carta.html" class="back-btn">← Seguir comprando</a>
+
+  <!-- PERFIL -->
+  <section class="perfil">
+    <img src="./img/perfil.png" alt="Foto de perfil" class="perfil-foto">
+    <div>
+      <h2 id="perfil-nombre">Usuario</h2>
+      <p id="perfil-rol">Rol: visitante</p>
+    </div>
+  </section>
+
+  <!-- CARRITO -->
+  <main class="carrito-container" id="carrito-container">
+    <!-- JS insertará los productos -->
+  </main>
+
+  <!-- TOTAL + BOTÓN DE PAGO -->
+  <section class="carrito-pago">
+    <div class="carrito-total">
+      <span>Total:</span>
+      <strong id="total-precio">$0</strong>
+    </div>
+    <button id="btnPagar" style="display:none;">Proceder al pago</button>
+  </section>
+
+  <!-- FOOTER GLOBAL -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <a href="./index.html" class="logo">
+          <img src="./img/logoarepabuela.png" alt="Arepabuelas Logo">
+        </a>
+        <div class="footer-address">
+          <p><strong>Dirección:</strong> Cra 69 #25B – 44 Of. 609,<br>Edificio World Business Port</p>
+          <p><strong>Teléfono:</strong> 601 7034250</p>
+        </div>
+      </div>
+      <div class="footer-right">
+        <h2><a href="./register.html">Regístrate</a></h2>
+        <div class="footer-social">
+          <img src="./img/RedesSociales.png" alt="Redes Sociales">
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

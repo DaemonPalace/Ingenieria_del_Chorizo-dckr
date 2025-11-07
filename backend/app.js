@@ -217,100 +217,106 @@ app.get("/api/minio-test", async (req, res, next) => {
   }
 });
 
-// Register endpoint (for clientes)
+// ===============================
+// 📸 Register endpoint (para clientes)
+// ===============================
 app.post("/api/register", upload.single("foto"), async (req, res, next) => {
-  console.log("Received /api/register request:", {
+  console.log("📩 Received /api/register request:", {
     body: req.body,
     file: req.file
       ? { originalname: req.file.originalname, size: req.file.size }
       : "No file",
   });
+
   try {
     const { nombre, correo, password } = req.body;
     const foto = req.file;
     const missingFields = [];
+
     if (!nombre) missingFields.push("nombre");
     if (!correo) missingFields.push("correo");
     if (!password) missingFields.push("password");
     if (!foto) missingFields.push("foto");
+
     if (missingFields.length > 0) {
-      console.error("Validation failed: Missing required fields", {
-        missingFields,
-      });
       return res
         .status(400)
         .json({
           error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
         });
     }
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-      console.error("Validation failed: Invalid email", { correo });
       return res.status(400).json({ error: "Correo inválido" });
     }
-    console.log("Checking for existing email:", correo);
+
+    // 🔎 Validar correo duplicado
     const emailCheck = await pool.query(
       "SELECT id_usuario FROM usuario WHERE correo = $1",
       [correo]
     );
     if (emailCheck.rows.length > 0) {
-      console.error("Email already exists:", correo);
       return res.status(400).json({ error: "El correo ya está registrado" });
     }
-    console.log("Hashing password...");
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
-    console.log("Password hashed successfully");
+
+    // 🔐 Encriptar contraseña
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // 📸 Subir imagen a MinIO
     const fileExtension = path.extname(foto.originalname).toLowerCase();
     const fileName = `profile_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 15)}${fileExtension}`;
-    console.log("Generated filename for upload:", fileName);
-    console.log("Uploading photo to MinIO:", {
-      bucket: "arepabuelas-users",
-      fileName,
+
+    await minioClient.putObject("arepabuelas-users", fileName, foto.buffer, {
+      "Content-Type": foto.mimetype,
     });
-    try {
-      await minioClient.putObject("arepabuelas-users", fileName, foto.buffer, {
-        "Content-Type": foto.mimetype,
-      });
-      console.log("Photo uploaded successfully:", fileName);
-    } catch (err) {
-      console.error("MinIO upload failed:", {
-        error: err.message,
-        code: err.code,
-        stack: err.stack,
-      });
-      throw new Error(`Failed to upload photo to MinIO: ${err.message}`);
-    }
-    const fotoUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/arepabuelas-users/${fileName}`;
-    console.log("Generated photo URL:", fotoUrl);
-    console.log("Inserting user into database:", {
-      nombre,
-      correo,
-      password_hash,
-      fotoUrl,
-    });
-    const query = `
+
+    // 📁 Nueva URL interna consistente con productos
+    const fotoUrl = `/api/images/users/${fileName}`;
+
+    // 💾 Insertar usuario en BD
+    const result = await pool.query(
+      `
       INSERT INTO usuario (nombre, correo, password_hash, foto_url, rol, aprobado, fecha_registro)
       VALUES ($1, $2, $3, $4, 'cliente', FALSE, CURRENT_TIMESTAMP)
       RETURNING id_usuario
-    `;
-    const values = [nombre, correo, password_hash, fotoUrl];
-    const result = await pool.query(query, values);
-    console.log("User registered successfully:", {
+      `,
+      [nombre, correo, password_hash, fotoUrl]
+    );
+
+    console.log("✅ Usuario registrado correctamente:", {
       id_usuario: result.rows[0].id_usuario,
+      correo,
     });
-    res.status(201).json({ message: "Usuario registrado exitosamente" });
+
+    res
+      .status(201)
+      .json({ message: "Usuario registrado exitosamente", foto_url: fotoUrl });
   } catch (err) {
-    console.error("Registration error:", {
-      error: err.message,
-      stack: err.stack,
-      body: req.body,
-      file: req.file ? req.file.originalname : "No file",
-    });
+    console.error("❌ Registration error:", err);
     next(err);
   }
 });
+
+
+// ===============================
+// 🖼️ Nueva ruta para servir imágenes de usuarios
+// ===============================
+app.get("/api/images/users/:filename", async (req, res) => {
+  const { filename } = req.params;
+  try {
+    const data = await minioClient.getObject("arepabuelas-users", filename);
+    const stat = await minioClient.statObject("arepabuelas-users", filename);
+    res.setHeader("Content-Type", stat.metaData["content-type"] || "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+    data.pipe(res);
+  } catch (err) {
+    console.error("Error obteniendo imagen de usuario:", err);
+    res.status(404).send("Imagen no encontrada");
+  }
+});
+
 
 // Login endpoint
 app.post("/api/login", async (req, res, next) => {
@@ -444,6 +450,196 @@ app.put(
   }
 );
 
+// PUT /api/users/:id/role - Cambiar rol (cliente o admin)
+app.put(
+  "/api/users/:id/role",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { rol } = req.body;
+
+      if (!rol) {
+        return res.status(400).json({ error: "Falta el campo 'rol'" });
+      }
+
+      // Solo permitir 'admin' o 'cliente'
+      if (!["admin", "cliente"].includes(rol.toLowerCase())) {
+        return res
+          .status(400)
+          .json({ error: "Rol inválido. Solo se permite 'admin' o 'cliente'." });
+      }
+
+      // Verificar si el usuario existe y que no sea superadmin
+      const target = await pool.query(
+        "SELECT rol FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (target.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      if (target.rows[0].rol === "superadmin") {
+        return res
+          .status(403)
+          .json({ error: "No se puede modificar el rol de un superadmin" });
+      }
+
+      // Actualizar el rol
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET rol = $2
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id, rol]
+      );
+
+      res.json({
+        message: "Rol actualizado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// PUT /api/users/:id/deactivate - Desactivar usuario
+app.put(
+  "/api/users/:id/deactivate",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      // Verificar existencia del usuario
+      const checkUser = await pool.query(
+        "SELECT id_usuario FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (checkUser.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      // Actualizar aprobado a FALSE
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET aprobado = FALSE
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id]
+      );
+
+      res.json({
+        message: "Usuario desactivado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+// PUT /api/users/:id/role - Cambiar rol (cliente o admin)
+app.put(
+  "/api/users/:id/role",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { rol } = req.body;
+
+      if (!rol) {
+        return res.status(400).json({ error: "Falta el campo 'rol'" });
+      }
+
+      // Solo permitir 'admin' o 'cliente'
+      if (!["admin", "cliente"].includes(rol.toLowerCase())) {
+        return res
+          .status(400)
+          .json({ error: "Rol inválido. Solo se permite 'admin' o 'cliente'." });
+      }
+
+      // Verificar si el usuario existe y que no sea superadmin
+      const target = await pool.query(
+        "SELECT rol FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (target.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      if (target.rows[0].rol === "superadmin") {
+        return res
+          .status(403)
+          .json({ error: "No se puede modificar el rol de un superadmin" });
+      }
+
+      // Actualizar el rol
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET rol = $2
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id, rol]
+      );
+
+      res.json({
+        message: "Rol actualizado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// PUT /api/users/:id/deactivate - Desactivar usuario
+app.put(
+  "/api/users/:id/deactivate",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      // Verificar existencia del usuario
+      const checkUser = await pool.query(
+        "SELECT id_usuario FROM usuario WHERE id_usuario = $1",
+        [id]
+      );
+      if (checkUser.rows.length === 0) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      // Actualizar aprobado a FALSE
+      const result = await pool.query(
+        `
+        UPDATE usuario
+        SET aprobado = FALSE
+        WHERE id_usuario = $1
+        RETURNING id_usuario, nombre, correo, rol::TEXT as rol, aprobado
+      `,
+        [id]
+      );
+
+      res.json({
+        message: "Usuario desactivado correctamente",
+        user: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+
 // DELETE /api/users/:id - Delete a user
 app.delete(
   "/api/users/:id",
@@ -507,6 +703,41 @@ app.delete(
     }
   }
 );
+// GET /api/users/me - Obtiene el perfil del usuario autenticado
+app.get("/api/users/me", authenticateToken, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT 
+        id_usuario, 
+        nombre, 
+        correo, 
+        rol::TEXT as rol, 
+        aprobado, 
+        fecha_registro, 
+        foto_url
+      FROM usuario
+      WHERE id_usuario = $1
+    `,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const user = result.rows[0];
+
+    // Mantén la URL tal como está guardada en la base de datos
+    user.foto_url = user.foto_url || null;
+
+    res.json(user);
+  } catch (err) {
+    console.error("Error en /api/users/me:", err);
+    next(err);
+  }
+});
+
 
 // Products CRUD
 
@@ -572,6 +803,70 @@ app.get("/api/products", authenticateToken, isAdmin, async (req, res, next) => {
     const result = await pool.query("SELECT * FROM Producto");
     res.json(result.rows);
   } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/public/products - Productos visibles públicamente (sin token)
+app.get("/api/public/products", async (req, res, next) => {
+  try {
+    // Solo los productos activos (opcional)
+    const result = await pool.query(`
+      SELECT id_producto, nombre, precio, descripcion, imagen_url
+      FROM Producto
+      ORDER BY id_producto ASC
+    `);
+
+    // Asegura que las URLs sean absolutas y accesibles desde el front
+    const products = result.rows.map((p) => ({
+      id: p.id_producto,
+      nombre: p.nombre,
+      precio: p.precio,
+      descripcion: p.descripcion,
+      imagen_url: p.imagen_url
+        ? `${req.protocol}://${req.get("host")}${p.imagen_url}`
+        : "/img/no-image.png",
+    }));
+
+    res.json(products);
+  } catch (err) {
+    console.error("Error obteniendo productos públicos:", err);
+    next(err);
+  }
+});
+
+app.get("/api/public/products/:id", async (req, res, next) => {
+  try {
+    const id = req.params.id;
+
+    // ✅ Fix: wrap SQL query in backticks and ensure parameters are correct
+    const result = await pool.query(
+      `SELECT id_producto, nombre, precio, descripcion, imagen_url 
+       FROM Producto 
+       WHERE id_producto = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    const p = result.rows[0];
+
+    // ✅ Fix: use template string properly for image URL
+    const product = {
+      id: p.id_producto,
+      nombre: p.nombre,
+      precio: p.precio,
+      descripcion: p.descripcion,
+      imagen_url: p.imagen_url
+        ? `${req.protocol}://${req.get("host")}${p.imagen_url}`
+        : "/img/no-image.png",
+    };
+
+    res.json(product);
+  } catch (err) {
+    console.error("Error obteniendo producto público:", err);
     next(err);
   }
 });
@@ -680,10 +975,6 @@ app.delete(
   }
 );
 
-app.listen(port, () => {
-  console.log(`Backend running on port ${port}`);
-});
-
 // Sirve imágenes de productos
 app.get("/api/images/products/:filename", async (req, res) => {
   const { filename } = req.params;
@@ -696,4 +987,389 @@ app.get("/api/images/products/:filename", async (req, res) => {
   } catch (err) {
     res.status(404).send("Imagen no encontrada");
   }
+});
+
+// ===============================
+// 💬 Comments Endpoints
+// ===============================
+
+// POST /api/comments - Add a comment to a product
+app.post("/api/comments", authenticateToken, async (req, res, next) => {
+  console.log("Received /api/comments request:", { body: req.body });
+  try {
+    const { id_producto, comentario, calificacion } = req.body;
+    const missingFields = [];
+    if (!id_producto) missingFields.push("id_producto");
+    if (!comentario) missingFields.push("comentario");
+    if (!calificacion) missingFields.push("calificacion");
+    if (missingFields.length > 0) {
+      return res
+        .status(400)
+        .json({
+          error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+        });
+    }
+    if (calificacion < 1 || calificacion > 5) {
+      return res.status(400).json({ error: "Calificación debe estar entre 1 y 5" });
+    }
+    // Check if product exists
+    const productCheck = await pool.query(
+      "SELECT id_producto FROM Producto WHERE id_producto = $1",
+      [id_producto]
+    );
+    if (productCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+    const result = await pool.query(
+      `
+      INSERT INTO Comentario (id_usuario, id_producto, comentario, calificacion)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+      `,
+      [req.user.id, id_producto, comentario, calificacion]
+    );
+    res.status(201).json({
+      message: "Comentario agregado exitosamente",
+      comment: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Comment creation error:", err);
+    next(err);
+  }
+});
+
+// GET /api/public/products/:id/comments - Get comments for a product (public)
+app.get("/api/public/products/:id/comments", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `
+      SELECT 
+        c.id_comentario,
+        c.comentario,
+        c.calificacion,
+        c.fecha,
+        u.nombre AS usuario_nombre
+      FROM Comentario c
+      JOIN Usuario u ON c.id_usuario = u.id_usuario
+      WHERE c.id_producto = $1
+      ORDER BY c.fecha DESC
+      `,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching comments:", err);
+    next(err);
+  }
+});
+
+// ===============================
+// 🎟️ Coupon Endpoints
+// ===============================
+
+// GET /api/coupons/check - Check if user has a coupon available
+app.get("/api/coupons/check", authenticateToken, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      "SELECT cupon FROM Usuario WHERE id_usuario = $1",
+      [req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    res.json({ hasCoupon: result.rows[0].cupon });
+  } catch (err) {
+    console.error("Coupon check error:", err);
+    next(err);
+  }
+});
+
+// ===============================
+// 💳 Payments Endpoint (Simulated)
+// ===============================
+app.post("/api/payments", authenticateToken, async (req, res, next) => {
+  console.log("Received /api/payments request:", { body: req.body });
+
+  const client = await pool.connect();
+
+  try {
+    const { correo, titular, numero_tarjeta, tipo, carrito } = req.body;
+
+    // Validate input
+    const missingFields = [];
+    if (!titular) missingFields.push("titular");
+    if (!numero_tarjeta) missingFields.push("numero_tarjeta");
+    if (!tipo) missingFields.push("tipo");
+    if (!Array.isArray(carrito) || carrito.length === 0)
+      missingFields.push("carrito (productos)");
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: `Faltan los siguientes campos: ${missingFields.join(", ")}`,
+      });
+    }
+
+    if (tipo !== "debito" && tipo !== "credito") {
+      return res.status(400).json({ error: "Tipo de pago inválido" });
+    }
+
+    if (numero_tarjeta.length !== 16 || isNaN(numero_tarjeta)) {
+      return res.status(400).json({ error: "Número de tarjeta inválido" });
+    }
+
+    // ✅ Start transaction
+    await client.query("BEGIN");
+
+    // =======================================
+    // 1️⃣ Create new order (Pedido)
+    // =======================================
+    const pedidoResult = await client.query(
+      `
+      INSERT INTO Pedido (id_usuario, estado, total)
+      VALUES ($1, 'pendiente', 0.00)
+      RETURNING id_pedido
+      `,
+      [req.user.id]
+    );
+    const id_pedido = pedidoResult.rows[0].id_pedido;
+
+    let total = 0;
+
+    // =======================================
+    // 2️⃣ Insert each item in DetallePedido
+    // =======================================
+    for (const item of carrito) {
+      const { id_producto, cantidad } = item;
+
+      // Get product price
+      const prodResult = await client.query(
+        "SELECT precio FROM Producto WHERE id_producto = $1",
+        [id_producto]
+      );
+
+      if (prodResult.rows.length === 0) {
+        throw new Error(`Producto con ID ${id_producto} no encontrado`);
+      }
+
+      const precio = parseFloat(prodResult.rows[0].precio);
+      const subtotal = precio * cantidad;
+      total += subtotal;
+
+      await client.query(
+        `
+        INSERT INTO DetallePedido (id_pedido, id_producto, cantidad, subtotal)
+        VALUES ($1, $2, $3, $4)
+        `,
+        [id_pedido, id_producto, cantidad, subtotal]
+      );
+    }
+
+    // =======================================
+    // 3️⃣ Check coupon & apply discount
+    // =======================================
+    const userCouponCheck = await client.query(
+      "SELECT cupon FROM Usuario WHERE id_usuario = $1",
+      [req.user.id]
+    );
+
+    let descuento_aplicado = 0;
+    let cupon_usado = false;
+
+    if (userCouponCheck.rows.length > 0 && userCouponCheck.rows[0].cupon) {
+      // Apply 10% discount (can change the %)
+      descuento_aplicado = total * 0.1;
+      total -= descuento_aplicado;
+
+      // Mark coupon as used
+      await client.query(
+        "UPDATE Usuario SET cupon = FALSE WHERE id_usuario = $1",
+        [req.user.id]
+      );
+      cupon_usado = true;
+    }
+
+    // =======================================
+    // 4️⃣ Update Pedido total
+    // =======================================
+    await client.query(
+      `UPDATE Pedido SET total = $1, estado = 'pagado' WHERE id_pedido = $2`,
+      [total, id_pedido]
+    );
+
+    // =======================================
+    // 5️⃣ Store simulated card info
+    // =======================================
+    const ultimos_4_digitos = numero_tarjeta.slice(-4);
+    const tarjetaResult = await client.query(
+      `
+      INSERT INTO TarjetaSimulada (id_usuario, ultimos_4_digitos, tipo, nombre_titular)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id_tarjeta
+      `,
+      [req.user.id, ultimos_4_digitos, tipo, titular]
+    );
+    const id_tarjeta = tarjetaResult.rows[0].id_tarjeta;
+
+    // =======================================
+    // 6️⃣ Record payment in PagoSimulado
+    // =======================================
+    const referencia = `REF-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    await client.query(
+      `
+      INSERT INTO PagoSimulado (id_usuario, id_pedido, metodo, estado, referencia)
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [req.user.id, id_pedido, tipo, "exitoso", referencia]
+    );
+
+    // =======================================
+    // 7️⃣ Commit transaction
+    // =======================================
+    await client.query("COMMIT");
+
+    console.log("✅ Pago simulado procesado:", {
+      id_tarjeta,
+      id_pedido,
+      correo,
+      cupon_usado,
+      descuento_aplicado,
+    });
+
+    res.status(201).json({
+      message: "Pago procesado exitosamente",
+      id_pedido,
+      total,
+      id_tarjeta,
+      referencia,
+      cupon_usado,
+      descuento_aplicado,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("❌ Payment error:", err);
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ===============================
+// 🧾 GET Pedido Info (Receipt)
+// ===============================
+app.get("/api/pedidos/:id", authenticateToken, async (req, res, next) => {
+  try {
+    const pedidoId = req.params.id;
+    const userId = req.user.id; // from JWT auth
+
+    // 1️⃣ Get main order info + payment + user
+    const pedidoQuery = `
+      SELECT 
+        p.id_pedido,
+        p.fecha_pedido,
+        p.total,
+        p.estado,
+        u.nombre AS cliente_nombre,
+        u.correo AS cliente_correo,
+        COALESCE(pg.metodo, 'tarjeta') AS metodo_pago,
+        pg.fecha_pago
+      FROM Pedido p
+      JOIN Usuario u ON p.id_usuario = u.id_usuario
+      LEFT JOIN PagoSimulado pg ON p.id_pedido = pg.id_pedido
+      WHERE p.id_pedido = $1 AND p.id_usuario = $2
+      LIMIT 1;
+    `;
+    const pedidoResult = await pool.query(pedidoQuery, [pedidoId, userId]);
+
+    if (pedidoResult.rows.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    const pedido = pedidoResult.rows[0];
+
+    // 2️⃣ Get item details (DetallePedido + Producto)
+    const detallesQuery = `
+      SELECT 
+        dp.id_producto,
+        pr.nombre,
+        dp.cantidad,
+        pr.precio,
+        dp.subtotal,
+        pr.imagen_url
+      FROM DetallePedido dp
+      JOIN Producto pr ON dp.id_producto = pr.id_producto
+      WHERE dp.id_pedido = $1;
+    `;
+    const detallesResult = await pool.query(detallesQuery, [pedidoId]);
+
+    pedido.items = detallesResult.rows;
+
+    // 3️⃣ Compute subtotal and total (ensure values are numeric)
+    pedido.subtotal = detallesResult.rows.reduce((sum, it) => sum + Number(it.subtotal), 0);
+    pedido.total = Number(pedido.total);
+
+    res.json(pedido);
+  } catch (err) {
+    console.error("❌ Error al obtener pedido:", err);
+    next(err);
+  }
+});
+
+app.get(
+  "/api/historial-compras",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { from, to } = req.query;
+      const params = [];
+      let where = "";
+
+      if (from) {
+        params.push(from);
+        where += ` WHERE DATE(p.fecha_pedido) >= $${params.length}`;
+      }
+      if (to) {
+        params.push(to);
+        where += `${where ? " AND" : " WHERE"} DATE(p.fecha_pedido) <= $${
+          params.length
+        }`;
+      }
+
+      const q = `
+      SELECT
+        u.correo,
+        u.nombre,
+        p.id_pedido,
+        p.fecha_pedido AS fecha,
+        p.estado,
+        p.total,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id_producto', pr.id_producto,
+            'nombre', pr.nombre,
+            'cantidad', dp.cantidad,
+            'subtotal', dp.subtotal
+          )
+          ORDER BY pr.nombre
+        ) AS productos
+      FROM Pedido p
+      JOIN Usuario u       ON u.id_usuario = p.id_usuario
+      JOIN DetallePedido dp ON dp.id_pedido = p.id_pedido
+      JOIN Producto pr     ON pr.id_producto = dp.id_producto
+      ${where}
+      GROUP BY u.correo, u.nombre, p.id_pedido, p.fecha_pedido, p.estado, p.total
+      ORDER BY p.fecha_pedido DESC;
+    `;
+
+      const { rows } = await pool.query(q, params);
+      res.json(rows);
+    } catch (err) {
+      console.error("Error en /api/historial-compras:", err);
+      next(err);
+    }
+  }
+);
+
+app.listen(port, () => {
+  console.log(`Backend running on port ${port}`);
 });

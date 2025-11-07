@@ -1,0 +1,160 @@
+/* Fondo y tipografías consistentes */
+:root{
+  --bg: #D69E32;
+  --ink: #3C2E26;
+  --card: #f7d154;
+  --white: #ffffff;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body{
+  background-color: var(--bg);
+  font-family: 'Questrial', sans-serif;
+  color: var(--ink);
+}
+
+/* Main */
+.main{
+  background-color: var(--bg);
+  background-image: url("./img/cafesFondo.png"); /* opcional, cámbialo si no existe */
+  background-size: cover;
+  background-repeat: repeat;
+  padding: clamp(16px, 4vw, 40px) 0 60px;
+}
+
+.carta-header{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 72px);
+}
+
+.carta-header h2{
+  color: var(--white);
+  font-size: clamp(28px, 4vw, 40px);
+  margin: 8px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.carta-header h2::after{
+  content: "";
+  flex: 1 1 auto;
+  height: 2px;
+  background: var(--white);
+  opacity: 0.9;
+}
+
+.carta-subtitle{
+  color: var(--white);
+  opacity: 0.9;
+  margin: 0 0 24px 0;
+}
+
+/* GRID de productos */
+.menu-grid{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 72px);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: clamp(16px, 3vw, 28px);
+}
+
+/* Tarjeta de producto */
+.card{
+  background: var(--card);
+  border-radius: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform .2s ease, box-shadow .2s ease;
+  position: relative;
+}
+
+.card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,.15);
+}
+
+.card__img{
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
+}
+
+.card__body{
+  padding: 14px 14px 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.card__title{
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.card__desc{
+  font-size: .95rem;
+  opacity: .9;
+}
+
+.card__price{
+  font-family: 'Anton', sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: .3px;
+  margin-top: 2px;
+}
+
+/* Botón agregar */
+.card__actions{
+  margin-top: 6px;
+  display: flex;
+}
+
+.btn-add{
+  appearance: none;
+  border: none;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: .95rem;
+  cursor: pointer;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform .15s ease, opacity .15s ease;
+}
+
+.btn-add img{
+  width: 18px;
+  height: 18px;
+}
+
+.btn-add:hover{
+  transform: translateY(-1px);
+  opacity: .95;
+}
+
+/* Accesibilidad en foco */
+.btn-add:focus-visible{
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px rgba(60,46,38,.45);
+}
+
+/* Pequeños ajustes responsivos */
+@media (max-width: 480px){
+  .carta-header h2::after{ display: none; }
+}

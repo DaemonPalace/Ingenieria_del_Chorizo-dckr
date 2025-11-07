@@ -1,0 +1,156 @@
+body {
+  background-color: #D69E32;
+  font-family: 'Questrial', sans-serif;
+  color: #3C2E26;
+  margin: 0;
+  padding: 0;
+}
+
+.main {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: #D69E32;
+  background-image: url("./img/cafesFondo.png");
+  min-height: 100vh;
+}
+
+.checkout-container {
+  display: flex;
+  flex-wrap: wrap;
+  background-color: #fff8e7;
+  border-radius: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  max-width: 1000px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.form-section {
+  flex: 1 1 60%;
+  padding: 40px;
+}
+
+.resumen-section {
+  flex: 1 1 40%;
+  background-color: #f9e1a3;
+  padding: 30px;
+  border-left: 3px solid #3C2E26;
+}
+
+h2, h3 {
+  font-family: 'Anton', sans-serif;
+  color: #3C2E26;
+}
+
+.subtitle {
+  margin-bottom: 25px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  margin-bottom: 18px;
+  font-size: 1em;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.vencimiento {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tarjeta-opciones {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.tarjeta-btn {
+  flex: 1;
+  border: 2px solid #3C2E26;
+  background-color: #fff8e7;
+  color: #3C2E26;
+  padding: 10px;
+  font-family: 'Questrial', sans-serif;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.tarjeta-btn.active, .tarjeta-btn:hover {
+  background-color: #3C2E26;
+  color: white;
+}
+
+.btn-pagar {
+  background-color: #3C2E26;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 1em;
+  cursor: pointer;
+  width: 100%;
+  transition: transform 0.2s ease;
+}
+
+.btn-pagar:hover {
+  transform: scale(1.03);
+}
+
+/* Totales */
+.resumen-section h3 {
+  font-family: 'Anton', sans-serif;
+  color: #3C2E26;
+  font-size: 1.5em;
+}
+
+#resumenProductos div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.totales p {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin: 6px 0;
+}
+
+.totales .total {
+  font-size: 1.3em;
+  color: #3C2E26;
+  border-top: 2px solid #3C2E26;
+  padding-top: 10px;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .checkout-container {
+    flex-direction: column;
+  }
+  .resumen-section {
+    border-left: none;
+    border-top: 3px solid #3C2E26;
+  }
+}

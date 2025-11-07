@@ -1,0 +1,199 @@
+/* ===== Base ===== */
+body {
+  background-color: #D69E32;
+  font-family: 'Questrial', sans-serif;
+  color: #3C2E26;
+  margin: 0;
+  padding: 0; /* sin margen lateral */
+}
+
+/* ===== Botón volver ===== */
+.back-btn {
+  display: inline-block;
+  background-color: #3C2E26;
+  color: #fff;
+  text-decoration: none;
+  font-family: 'Anton', sans-serif;
+  padding: 10px 20px;
+  border-radius: 5px;
+  margin: 20px 0;
+  transition: background 0.3s, color 0.3s;
+}
+.back-btn:hover {
+  background-color: #fff;
+  color: #3C2E26;
+}
+
+/* ===== Detalle del producto ===== */
+.product-container {
+  max-width: 900px;
+  background-color: #fff;
+  margin: 40px auto;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.product-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.product-header img {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.product-header h2 {
+  font-family: 'Anton', sans-serif;
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.product-header p {
+  font-size: 1.1rem;
+  color: #5a463a;
+  text-align: center;
+}
+
+.price {
+  background-color: #D69E32;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 25px;
+  font-family: 'Anton', sans-serif;
+  font-size: 1.2rem;
+  margin-top: 10px;
+}
+
+/* ===== Comentarios ===== */
+.comments-section {
+  margin-top: 40px;
+}
+
+.comments-section h3 {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.6rem;
+  color: #3C2E26;
+  margin-bottom: 10px;
+}
+
+.comment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.comment-item {
+  background: #f9f3e3;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.comment-item strong {
+  color: #3C2E26;
+}
+
+/* Estrellas renderizadas en cada comentario */
+.stars {
+  color: #D69E32;
+  margin-left: 8px;
+  font-size: 16px;
+  vertical-align: middle;
+}
+
+/* ===== Formulario de comentario ===== */
+.comment-form {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.comment-form textarea {
+  border: 2px solid #3C2E26;
+  border-radius: 8px;
+  padding: 10px;
+  resize: none;
+  font-size: 1rem;
+  font-family: 'Questrial', sans-serif;
+  min-height: 90px;
+}
+
+.comment-form button {
+  align-self: flex-end;
+  background-color: #3C2E26;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-family: 'Anton', sans-serif;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
+}
+.comment-form button:hover {
+  background-color: #D69E32;
+  color: #3C2E26;
+}
+
+/* ===== Control de calificación (estrellas) ===== */
+.rating {
+  display: inline-flex;
+  gap: 6px;
+  direction: rtl;                 /* para que el hover llene hacia la izquierda */
+  font-size: 28px;
+  user-select: none;
+  align-self: flex-start;
+}
+
+.rating input {
+  display: none;                  /* ocultamos los radios, usamos las labels */
+}
+
+.rating label {
+  cursor: pointer;
+  color: #cdbca0;                 /* estrella “vacía” */
+  transition: transform .15s, color .15s;
+  line-height: 1;
+}
+
+/* Hover: ilumina la actual y las de la izquierda (por direction: rtl) */
+.rating label:hover,
+.rating label:hover ~ label {
+  color: #D69E32;
+  transform: scale(1.05);
+}
+
+/* Selección fija */
+.rating input:checked ~ label {
+  color: #D69E32;
+}
+
+/* Accesibilidad con teclado */
+.rating input:focus + label {
+  outline: 2px solid #3C2E26;
+  outline-offset: 2px;
+}
+
+/* ===== Utilidad accesible (ocultar solo visualmente) ===== */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 576px) {
+  .product-container {
+    margin: 20px 10px;
+    padding: 20px;
+  }
+  .product-header h2 { font-size: 1.7rem; }
+  .rating { font-size: 24px; }
+}

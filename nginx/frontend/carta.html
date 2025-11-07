@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="./img/logoarepabuela.png" type="image/png" />
+  <title>ArepAbuelas — Carta</title>
+
+  <!-- Fuentes -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Questrial&display=swap" rel="stylesheet">
+
+  <!-- Estilos globales ya existentes -->
+  <link rel="stylesheet" href="./css/header&footer.css"/>
+  <link rel="stylesheet" href="./css/index.css"/>
+  <link rel="stylesheet" href="./css/carta.css"/>
+
+  <!-- JS de la carta -->
+  <script src="./js/carta.js" defer></script>
+  <script src="../js/logout.js"></script>
+</head>
+<body>
+  <!-- Header consistente con tus otras vistas -->
+  <header>
+    <div class="dropdown">
+      <button class="dropbtn" aria-label="Abrir menú">
+        <img src="./img/Menu_Hamburgesa.png" alt="Menú">
+      </button>
+      <div class="dropdown-content">
+        <a href="./index.html">Inicio</a>
+        <a href="./carrito.html">Carrito de Compras</a>
+        <a href="./login.html">Login</a>
+        <a href="./historialcliente.html">Historial de Compras</a>
+        <a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</a>
+      </div>
+    </div>
+
+    <h1><a href="./index.html">ArepAbuelas</a></h1>
+
+    <div>
+      <a href="./carrito.html" aria-label="Ir al carrito">
+        <img src="./img/carritoIcono.png" alt="Carrito">
+      </a>
+    </div>
+  </header>
+
+  <!-- MAIN: Carta en forma de lista (grid de tarjetas) -->
+  <main class="main">
+    <div class="carta-header">
+      <h2>Nuestra Carta</h2>
+    </div>
+
+    <!-- Contenedor donde se pintan los productos desde JS -->
+    <section id="menu-list" class="menu-grid" aria-live="polite"></section>
+  </main>
+
+  <!-- Footer consistente -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <a href="./index.html" class="logo">
+          <img src="./img/logoarepabuela.png" alt="Arepabuelas Logo">
+        </a>
+        <div class="footer-address">
+          <p><strong>Dirección:</strong> Cra 69 #25B – 44 Of. 609,<br>Edificio World Business Port</p>
+          <p><strong>Teléfono:</strong> 601 7034250</p>
+        </div>
+      </div>
+      <div class="footer-right">
+        <h2><a href="./register.html">Regístrate</a></h2>
+        <div class="footer-social">
+          <img src="./img/RedesSociales.png" alt="Redes Sociales">
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
+ 
