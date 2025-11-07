@@ -3,27 +3,16 @@ const fs = require("fs");
 const path = require("path");
 const Minio = require("minio");
 
-// Helper – safely read a secret file (throws a clear error if missing)
-function readSecret(fileEnvVar, name) {
-  if (!fileEnvVar) {
-    throw new Error(`Environment variable for ${name} is not defined`);
-  }
-  try {
-    return fs.readFileSync(fileEnvVar, 'utf8').trim();
-  } catch (err) {
-    throw new Error(`Failed to read ${name} from ${fileEnvVar}: ${err.message}`);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  MinIO client
-// ─────────────────────────────────────────────────────────────────────────────
+// ===============================
+// ⚙️ CONFIGURACIÓN DE MINIO
+// ===============================
 const minioClient = new Minio.Client({
-  endPoint: process.env.MINIO_HOST || 'minio',
-  port: parseInt(process.env.MINIO_PORT, 10) || 9000,
-  useSSL: true,
-  accessKey: readSecret(process.env.MINIO_ACCESS_KEY_FILE, 'MinIO access key'),
-  secretKey: readSecret(process.env.MINIO_SECRET_KEY_FILE, 'MinIO secret key'),
+  endPoint: process.env.MINIO_HOST || "minio",
+  port: parseInt(process.env.MINIO_PORT || "9000"),
+  useSSL: process.env.MINIO_PROTOCOL === "https" || true, // fuerza https
+  accessKey: process.env.MINIO_ACCESS_KEY,
+  secretKey: process.env.MINIO_SECRET_KEY,
+  region: "us-east-1", // evita error de región vacía (S3Error)
 });
 
 const bucketName = "arepabuelas-products";

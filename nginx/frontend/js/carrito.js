@@ -159,7 +159,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       const producto = carrito.find((p) => p.id === id);
 
       if (e.target.classList.contains("btn-sumar")) {
-        producto.quantity++;
+        if(producto.quantity<10){
+          producto.quantity++;
+        }
       } else if (e.target.classList.contains("btn-restar")) {
         producto.quantity--;
         if (producto.quantity <= 0) {

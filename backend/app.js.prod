@@ -1,52 +1,89 @@
-const express = require('express');
-const { Pool } = require('pg');
-const Minio = require('minio');
-const multer = require('multer');
-const path = require('path');
-const cors = require('cors');
-const bcrypt = require('bcrypt');
-const fs = require('fs');
-const jwt = require('jsonwebtoken');
+require("dotenv").config();
+const express = require("express");
+const { Pool } = require("pg");
+const Minio = require("minio");
+const multer = require("multer");
+const path = require("path");
+const cors = require("cors");
+const bcrypt = require("bcrypt");
+const fs = require("fs");
+const jwt = require("jsonwebtoken");
 const app = express();
 const port = 3000;
 
-// Configure CORS
-app.use(cors({
-  origin: ['https://localhost', 'https://localhost:443'], // Allow multiple origins for development
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+// Helper – safely read a secret file (throws a clear error if missing)
+function readSecret(fileEnvVar, name) {
+  if (!fileEnvVar) {
+    throw new Error(`Environment variable for ${name} is not defined`);
+  }
+  try {
+    return fs.readFileSync(fileEnvVar, 'utf8').trim();
+  } catch (err) {
+    throw new Error(`Failed to read ${name} from ${fileEnvVar}: ${err.message}`);
+  }
+}
 
-// Configure PostgreSQL
+// ─────────────────────────────────────────────────────────────────────────────
+//  PostgreSQL pool
+// ─────────────────────────────────────────────────────────────────────────────
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: 'arepabuelasdb',
-  password: fs.readFileSync(process.env.DB_PASS_FILE, 'utf8').trim(),
+  password: readSecret(process.env.DB_PASS_FILE, 'PostgreSQL password'),
   port: 5432,
+  // optional production tweaks
+  max: 20,                     // max connections
+  idleTimeoutMillis: 30000,    // close idle clients after 30 s
+  connectionTimeoutMillis: 2000,
 });
 
-// Configure MinIO client
+// ─────────────────────────────────────────────────────────────────────────────
+//  MinIO client
+// ─────────────────────────────────────────────────────────────────────────────
 const minioClient = new Minio.Client({
   endPoint: process.env.MINIO_HOST || 'minio',
-  port: parseInt(process.env.MINIO_PORT) || 9000,
+  port: parseInt(process.env.MINIO_PORT, 10) || 9000,
   useSSL: true,
-  accessKey: fs.readFileSync(process.env.MINIO_ACCESS_KEY_FILE, 'utf8').trim(),
-  secretKey: fs.readFileSync(process.env.MINIO_SECRET_KEY_FILE, 'utf8').trim(),
+  accessKey: readSecret(process.env.MINIO_ACCESS_KEY_FILE, 'MinIO access key'),
+  secretKey: readSecret(process.env.MINIO_SECRET_KEY_FILE, 'MinIO secret key'),
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  CORS – keep dev origins *or* read from env (optional)
+// ─────────────────────────────────────────────────────────────────────────────
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+if (allowedOrigins.length === 0) {
+  // fallback to the dev list you already had
+  allowedOrigins.push('https://localhost', 'https://localhost:443');
+}
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limit to 5MB
+  limits: { fileSize: 15 * 1024 * 1024 }, // Limit to 5MB
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = filetypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
     if (mimetype && extname) {
       return cb(null, true);
     }
-    cb(new Error('Solo se permiten imágenes JPEG o PNG'));
+    cb(new Error("Solo se permiten imágenes JPEG o PNG"));
   },
 });
 
@@ -54,17 +91,16 @@ const upload = multer({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const JWT_SECRET = process.env.JWT_SECRET || (
-  process.env.JWT_SECRET_FILE ? fs.readFileSync(process.env.JWT_SECRET_FILE, 'utf8').trim() : ''
-);
+// JWT Secret
+const JWT_SECRET = readSecret(process.env.JWT_SECRET_FILE)
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token requerido' });
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Token requerido" });
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Token inválido' });
+    if (err) return res.status(403).json({ error: "Token inválido" });
     req.user = user;
     next();
   });
@@ -72,30 +108,34 @@ function authenticateToken(req, res, next) {
 
 // Admin middleware (admin or superadmin)
 function isAdmin(req, res, next) {
-  if (!['admin', 'superadmin'].includes(req.user.role)) {
-    return res.status(403).json({ error: 'Acceso denegado: Requiere rol de admin o superadmin' });
+  if (!["admin", "superadmin"].includes(req.user.role)) {
+    return res
+      .status(403)
+      .json({ error: "Acceso denegado: Requiere rol de admin o superadmin" });
   }
   next();
 }
 
 // Superadmin middleware
 function isSuperAdmin(req, res, next) {
-  if (req.user.role !== 'superadmin') {
-    return res.status(403).json({ error: 'Acceso denegado: Requiere rol de superadmin' });
+  if (req.user.role !== "superadmin") {
+    return res
+      .status(403)
+      .json({ error: "Acceso denegado: Requiere rol de superadmin" });
   }
   next();
 }
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', {
+  console.error("Unhandled error:", {
     error: err.message,
     stack: err.stack,
     path: req.path,
     method: req.method,
   });
   res.status(500).json({
-    error: 'Error interno del servidor',
+    error: "Error interno del servidor",
     details: err.message,
     path: req.path,
   });
@@ -103,16 +143,16 @@ app.use((err, req, res, next) => {
 
 // Ensure the MinIO buckets exist
 async function ensureBuckets() {
-  const userBucket = 'arepabuelas-users';
-  const productBucket = 'arepabuelas-products';
+  const userBucket = "arepabuelas-users";
+  const productBucket = "arepabuelas-products";
   const policy = {
-    Version: '2012-10-17',
+    Version: "2012-10-17",
     Statement: [
       {
-        Effect: 'Allow',
-        Principal: '*',
-        Action: ['s3:GetObject'],
-        Resource: ['arn:aws:s3:::${bucketName}/*'],
+        Effect: "Allow",
+        Principal: "*",
+        Action: ["s3:GetObject"],
+        Resource: ["arn:aws:s3:::${bucketName}/*"],
       },
     ],
   };
@@ -123,17 +163,20 @@ async function ensureBuckets() {
       const bucketExists = await minioClient.bucketExists(bucketName);
       if (!bucketExists) {
         console.log(`Creating bucket ${bucketName}...`);
-        await minioClient.makeBucket(bucketName, 'us-east-1');
+        await minioClient.makeBucket(bucketName, "us-east-1");
         console.log(`Bucket ${bucketName} created successfully`);
       } else {
         console.log(`Bucket ${bucketName} already exists`);
       }
       console.log(`Setting bucket policy for ${bucketName}...`);
-      await minioClient.setBucketPolicy(bucketName, JSON.stringify(policy).replace('${bucketName}', bucketName));
+      await minioClient.setBucketPolicy(
+        bucketName,
+        JSON.stringify(policy).replace("${bucketName}", bucketName)
+      );
       console.log(`Bucket policy set for ${bucketName}`);
     }
   } catch (err) {
-    console.error('Error in ensureBuckets:', {
+    console.error("Error in ensureBuckets:", {
       error: err.message,
       code: err.code,
       stack: err.stack,
@@ -144,7 +187,7 @@ async function ensureBuckets() {
 
 // Initialize buckets on startup
 ensureBuckets().catch((err) => {
-  console.error('Failed to initialize MinIO buckets:', err);
+  console.error("Failed to initialize MinIO buckets:", err);
   process.exit(1);
 });
 
@@ -978,6 +1021,62 @@ app.get("/api/images/products/:filename", async (req, res) => {
   }
 });
 
+app.get(
+  "/api/historial-compras",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { from, to } = req.query;
+      const params = [];
+      let where = "";
+
+      if (from) {
+        params.push(from);
+        where += ` WHERE DATE(p.fecha_pedido) >= $${params.length}`;
+      }
+      if (to) {
+        params.push(to);
+        where += `${where ? " AND" : " WHERE"} DATE(p.fecha_pedido) <= $${
+          params.length
+        }`;
+      }
+
+      const q = `
+      SELECT
+        u.correo,
+        u.nombre,
+        p.id_pedido,
+        p.fecha_pedido AS fecha,
+        p.estado,
+        p.total,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id_producto', pr.id_producto,
+            'nombre', pr.nombre,
+            'cantidad', dp.cantidad,
+            'subtotal', dp.subtotal
+          )
+          ORDER BY pr.nombre
+        ) AS productos
+      FROM Pedido p
+      JOIN Usuario u       ON u.id_usuario = p.id_usuario
+      JOIN DetallePedido dp ON dp.id_pedido = p.id_pedido
+      JOIN Producto pr     ON pr.id_producto = dp.id_producto
+      ${where}
+      GROUP BY u.correo, u.nombre, p.id_pedido, p.fecha_pedido, p.estado, p.total
+      ORDER BY p.fecha_pedido DESC;
+    `;
+
+      const { rows } = await pool.query(q, params);
+      res.json(rows);
+    } catch (err) {
+      console.error("Error en /api/historial-compras:", err);
+      next(err);
+    }
+  }
+);
+
 // ===============================
 // 💬 Comments Endpoints
 // ===============================
@@ -1184,6 +1283,7 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
       `UPDATE Pedido SET total = $1, estado = 'pagado' WHERE id_pedido = $2`,
       [total, id_pedido]
     );
+
     // =======================================
     // 5️⃣ Store simulated card info
     // =======================================
