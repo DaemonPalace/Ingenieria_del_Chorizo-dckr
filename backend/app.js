@@ -41,7 +41,7 @@ const minioClient = new Minio.Client({
 // Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // Limit to 5MB
+  limits: { fileSize: 15 * 1024 * 1024 }, // Limit to 5MB
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png/;
     const mimetype = filetypes.test(file.mimetype);
@@ -989,6 +989,62 @@ app.get("/api/images/products/:filename", async (req, res) => {
   }
 });
 
+app.get(
+  "/api/historial-compras",
+  authenticateToken,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const { from, to } = req.query;
+      const params = [];
+      let where = "";
+
+      if (from) {
+        params.push(from);
+        where += ` WHERE DATE(p.fecha_pedido) >= $${params.length}`;
+      }
+      if (to) {
+        params.push(to);
+        where += `${where ? " AND" : " WHERE"} DATE(p.fecha_pedido) <= $${
+          params.length
+        }`;
+      }
+
+      const q = `
+      SELECT
+        u.correo,
+        u.nombre,
+        p.id_pedido,
+        p.fecha_pedido AS fecha,
+        p.estado,
+        p.total,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id_producto', pr.id_producto,
+            'nombre', pr.nombre,
+            'cantidad', dp.cantidad,
+            'subtotal', dp.subtotal
+          )
+          ORDER BY pr.nombre
+        ) AS productos
+      FROM Pedido p
+      JOIN Usuario u       ON u.id_usuario = p.id_usuario
+      JOIN DetallePedido dp ON dp.id_pedido = p.id_pedido
+      JOIN Producto pr     ON pr.id_producto = dp.id_producto
+      ${where}
+      GROUP BY u.correo, u.nombre, p.id_pedido, p.fecha_pedido, p.estado, p.total
+      ORDER BY p.fecha_pedido DESC;
+    `;
+
+      const { rows } = await pool.query(q, params);
+      res.json(rows);
+    } catch (err) {
+      console.error("Error en /api/historial-compras:", err);
+      next(err);
+    }
+  }
+);
+
 // ===============================
 // 💬 Comments Endpoints
 // ===============================
@@ -1199,14 +1255,15 @@ app.post("/api/payments", authenticateToken, async (req, res, next) => {
     // =======================================
     // 5️⃣ Store simulated card info
     // =======================================
+    const primeros_6_digitos = numero_tarjeta.slice(0,6)
     const ultimos_4_digitos = numero_tarjeta.slice(-4);
     const tarjetaResult = await client.query(
       `
-      INSERT INTO TarjetaSimulada (id_usuario, ultimos_4_digitos, tipo, nombre_titular)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO TarjetaSimulada (id_usuario, primeros_6_digitos, ultimos_4_digitos, tipo, nombre_titular)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id_tarjeta
       `,
-      [req.user.id, ultimos_4_digitos, tipo, titular]
+      [req.user.id, primeros_6_digitos, ultimos_4_digitos, tipo, titular]
     );
     const id_tarjeta = tarjetaResult.rows[0].id_tarjeta;
 
@@ -1323,43 +1380,36 @@ app.get(
       const { from, to } = req.query;
       const params = [];
       let where = "";
-
       if (from) {
         params.push(from);
         where += ` WHERE DATE(p.fecha_pedido) >= $${params.length}`;
       }
       if (to) {
         params.push(to);
-        where += `${where ? " AND" : " WHERE"} DATE(p.fecha_pedido) <= $${
-          params.length
-        }`;
+        where += `${where ? " AND" : " WHERE"} DATE(p.fecha_pedido) <= $${params.length}`;
       }
 
       const q = `
-      SELECT
-        u.correo,
-        u.nombre,
-        p.id_pedido,
-        p.fecha_pedido AS fecha,
-        p.estado,
-        p.total,
-        JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id_producto', pr.id_producto,
-            'nombre', pr.nombre,
-            'cantidad', dp.cantidad,
-            'subtotal', dp.subtotal
-          )
-          ORDER BY pr.nombre
-        ) AS productos
-      FROM Pedido p
-      JOIN Usuario u       ON u.id_usuario = p.id_usuario
-      JOIN DetallePedido dp ON dp.id_pedido = p.id_pedido
-      JOIN Producto pr     ON pr.id_producto = dp.id_producto
-      ${where}
-      GROUP BY u.correo, u.nombre, p.id_pedido, p.fecha_pedido, p.estado, p.total
-      ORDER BY p.fecha_pedido DESC;
-    `;
+        SELECT
+          p.id_pedido,
+          u.correo,
+          u.nombre,
+          p.fecha_pedido AS fecha,
+          p.total,
+          p.estado,
+          STRING_AGG(
+            pr.nombre || ' x' || dp.cantidad,
+            ', '
+            ORDER BY pr.nombre
+          ) AS productos
+        FROM Pedido p
+        JOIN Usuario u ON u.id_usuario = p.id_usuario
+        JOIN DetallePedido dp ON dp.id_pedido = p.id_pedido
+        JOIN Producto pr ON pr.id_producto = dp.id_producto
+        ${where}
+        GROUP BY p.id_pedido, u.correo, u.nombre, p.fecha_pedido, p.total, p.estado
+        ORDER BY p.fecha_pedido DESC;
+      `;
 
       const { rows } = await pool.query(q, params);
       res.json(rows);
@@ -1369,6 +1419,72 @@ app.get(
     }
   }
 );
+
+// ===============================
+// 🧾 HISTORIAL DE COMPRAS — CLIENTE
+// ===============================
+app.get("/api/orders/user/:email", authenticateToken, async (req, res, next) => {
+  try {
+    const { email } = req.params;
+
+    // 1️⃣ Buscar al usuario en base al correo
+    const userQuery = await pool.query(
+      "SELECT id_usuario FROM Usuario WHERE correo = $1",
+      [email]
+    );
+
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const id_usuario = userQuery.rows[0].id_usuario;
+
+    // 2️⃣ Obtener los pedidos del usuario
+    const pedidosQuery = await pool.query(
+      `
+      SELECT 
+        p.id_pedido,
+        p.fecha_pedido,
+        p.estado,
+        p.total
+      FROM Pedido p
+      WHERE p.id_usuario = $1
+      ORDER BY p.fecha_pedido DESC
+      `,
+      [id_usuario]
+    );
+
+    const pedidos = pedidosQuery.rows;
+
+    // 3️⃣ Para cada pedido, obtener los detalles (productos)
+    for (const pedido of pedidos) {
+      const detallesQuery = await pool.query(
+        `
+        SELECT 
+          d.cantidad,
+          pr.nombre,
+          pr.precio
+        FROM DetallePedido d
+        JOIN Producto pr ON d.id_producto = pr.id_producto
+        WHERE d.id_pedido = $1
+        `,
+        [pedido.id_pedido]
+      );
+
+      pedido.productos = detallesQuery.rows.map((r) => ({
+        producto: r.nombre,
+        cantidad: r.cantidad,
+        precio: r.precio,
+      }));
+    }
+
+    // 4️⃣ Enviar el historial completo
+    res.json(pedidos);
+  } catch (err) {
+    console.error("❌ Error obteniendo historial de compras:", err);
+    next(err);
+  }
+});
 
 app.listen(port, () => {
   console.log(`Backend running on port ${port}`);
