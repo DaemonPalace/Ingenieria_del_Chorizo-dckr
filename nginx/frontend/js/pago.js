@@ -259,8 +259,8 @@ form.addEventListener("submit", async (e) => {
     }
   }
 
-  if (_cvv.length < 3 || _cvv.length > 4 || !/^\d+$/.test(_cvv)) {
-    showError(cvv, "Debe tener 3 o 4 dígitos.");
+  if (_cvv.length < 3 || _cvv.length > 3 || !/^\d+$/.test(_cvv)) {
+    showError(cvv, "Debe tener 3 dígitos.");
     valid = false;
   }
 
