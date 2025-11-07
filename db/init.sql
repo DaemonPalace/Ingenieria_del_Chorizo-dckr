@@ -150,6 +150,7 @@ CREATE TABLE TarjetaSimulada (
     id_tarjeta SERIAL PRIMARY KEY,
     id_usuario INT REFERENCES Usuario(id_usuario)
         ON DELETE CASCADE ON UPDATE CASCADE,
+    primeros_6_digitos VARCHAR(6),
     ultimos_4_digitos VARCHAR(4), -- Solo últimos 4 dígitos
     tipo VARCHAR(20), -- Visa, MasterCard
     nombre_titular VARCHAR(255),
