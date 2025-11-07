@@ -209,7 +209,7 @@ onInput(fecha, () => {
 
 // 👇 CVV 3–4 dígitos
 onInput(cvv, () => {
-  cvv.value = cvv.value.replace(/\D/g, "").slice(0, 4);
+  cvv.value = cvv.value.replace(/\D/g, "").slice(0, 3);
 });
 
   // ===== Overlay de carga (si existe en tu HTML) =====
