@@ -11,22 +11,6 @@ body.loaded {
   transition: opacity 0.3s ease-in;
 }
 
-/* Sidebar */
-.sidebar {
-  font-family: 'Great Vibes', cursive;
-  height: 100vh;
-  position: fixed;
-  width: 250px;
-  background-color: #3C2E26;
-  color: #fff;
-}
-
-.logo-sidebar {
-  width: 140px;
-  display: block;
-  margin: auto;
-  padding: 10px 0;
-}
 
 .nav-link {
   font-size: 18px;
@@ -81,20 +65,18 @@ body.loaded {
   background-color: #e74c3c;
 }
 
-/* Logout */
-#logoutBtn {
+/* --- Que el contenido use toda la pantalla si no hay sidebar --- */
+.content{
+  /* quita el desplazamiento fijo por defecto */
+  margin-left: 0;
   width: 100%;
-  padding: 10px;
-  margin-top: 20px;
-  background-color: #3C2E26;
-  color: #d4a373;
-  border: none;
-  border-radius: 5px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
+  max-width: 100vw;
+  min-height: 100vh;              /* ocupa alto de la pantalla */
+  box-sizing: border-box;
 }
-#logoutBtn:hover {
-  background-color: #d4a373;
-  color: #fff;
+
+
+/* Asegura que la tabla responda al ancho completo */
+.table-responsive{
+  width: 100%;
 }
