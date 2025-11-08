@@ -1,7 +1,16 @@
 # E-COMMERCE 🫓 AREPABUELAS DE LA ESQUINA
 ## Guía de Instalación en Kali Linux (Docker)
 
-**Equipo:** Ingeniería del Chorizo  
+**Equipo:** Ingeniería del Chorizo
+
+**Integrantes:**
+
+Santiago Bazzani,
+Juan Jose Cardenas,
+Juan David Henao,
+Juan Andres Lacoutoure,
+Santiago Prieto,
+Andres Sanchez.
 
 ---
 
