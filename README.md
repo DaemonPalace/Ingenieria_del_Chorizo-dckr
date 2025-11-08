@@ -49,13 +49,17 @@ sudo ./start.sh
 ## 🧭 Menú de Opciones - Ingeniería del Chorizo Stack 
 
 ### Install Web Application
-→ Instala toda la infraestructura de la aplicación.  
+→ Instala toda la infraestructura de la aplicación.
+
 → Genera los certificados y secretos, y regenera los archivos de instalación (docker-compose.yml, app.js, upload_images_only.js, ./secrets, ./certs).
+
 → **BORRA TODOS LOS DATOS.**
 
 ### Update System/Repository
 → Actualiza el sistema de la kali, actualiza el código desde GitHub y **reconstruye contenedores**.
+
 → Vuelve a instalar la infraestructura de la aplicación.
+
 → **BORRA TODOS LOS DATOS.**
 
 ### Restart stack
@@ -63,19 +67,24 @@ sudo ./start.sh
 
 ### Reset stack (⚠️ Full Wipe)
 → Reinicia base de datos, archivos y contenedores.
-→ Solo para **empezar de cero.**
+
+→ Solo para **volver a empezar de cero.**
 
 ### Suspend (stop containers)
-→ Detiene los servicios **sin eliminarlos.**  
+→ Detiene los servicios **sin eliminarlos.** 
+
 → Para reanudar: usar opción 6.
 
 ### Resume (Start container)
 → Inicia nuevamente los contenedores **suspendidos.** 
+
 → Solo usar despues de suspender los contenedores.
 
 ### Uninstall
 → Elimina contenedores y persistencia completamente.
+
 → **BORRA TODOS LOS DATOS.**
+
 → Puedes reinstalar después.
 
 ### Exit
