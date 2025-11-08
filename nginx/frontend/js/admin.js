@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================
   // 🌐 CONFIGURACIÓN DEL BACKEND
   // ==========================
-  const API_BASE = `${window.location.origin}/api`;
+  const API_BASE = `/api`;
   console.log("🔗 Conectando con API_BASE =", API_BASE);
 
   // ==========================

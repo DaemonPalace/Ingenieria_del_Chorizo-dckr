@@ -1,6 +1,6 @@
 // js/pago.js — Integrado a /api/coupons/check y /api/payments (con crédito/débito)
 document.addEventListener("DOMContentLoaded", async () => {
-  const API_BASE = `${window.location.origin}/api`;
+  const API_BASE = `/api`;
   const token = sessionStorage.getItem("authToken");
   const email = sessionStorage.getItem("userEmail");
   // helpers seguros

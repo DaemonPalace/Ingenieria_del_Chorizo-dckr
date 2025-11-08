@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================
   // Sesión
   // ==========================
-  const API_BASE = `${window.location.origin}/api`;
+  const API_BASE = `/api`;
   const token = sessionStorage.getItem("authToken");
   const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
   const expiresAt = parseInt(sessionStorage.getItem("tokenExpiresAt") || "0", 10);

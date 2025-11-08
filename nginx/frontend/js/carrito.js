@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("🛒 Cargando carrito...");
 
-  const API_BASE = `${window.location.origin}/api`;
+  const API_BASE = `/api`;
   const CART_KEY = "cart";
   const CART_TTL_MS = 20 * 60 * 1000; // 20 minutos
 

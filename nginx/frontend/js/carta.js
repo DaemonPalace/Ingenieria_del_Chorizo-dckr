@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   console.log("🚀 Carta cargada correctamente");
-  const API_BASE = `${window.location.origin}/api`;
+  const API_BASE = `/api`;
   const $list = document.getElementById("menu-list");
 
   // ==========================================================

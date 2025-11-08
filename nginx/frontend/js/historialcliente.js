@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("📜 Historial de Compras cargado");
 
   document.body.style.display = "none";
-  const API_BASE = `${window.location.origin}/api`;
+  const API_BASE = `/api`;
 
   // =======================
   // 🔐 Validar sesión

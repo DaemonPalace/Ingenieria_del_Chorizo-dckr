@@ -144,3 +144,4 @@ docker-compose.override.yml
 .docker/
 /.secrets
 /certs
+/docker-bench-security

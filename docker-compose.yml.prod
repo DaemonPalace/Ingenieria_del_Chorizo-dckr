@@ -1,4 +1,13 @@
+version: "3.8"
+
+networks:
+  app-network:
+    driver: bridge
+
 services:
+  # ==============================================================
+  # WEB – NGINX
+  # ==============================================================
   web:
     image: nginx:latest
     build:
@@ -9,20 +18,39 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/frontend:/usr/share/nginx/html
-      - ./certs/nginx:/etc/nginx/certs:ro
+      - ./nginx/frontend:/usr/share/nginx/html:ro
+      - ./certs/nginx/nginx.crt:/etc/nginx/certs/nginx.crt:ro
+      - ./certs/nginx/nginx.key:/etc/nginx/certs/nginx.key:ro
       - ./certs/ca:/usr/local/share/ca-certificates/ca:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+          pids: 100
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
     networks:
       - app-network
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+  # ==============================================================
+  # BACKEND – Node.js
+  # ==============================================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     working_dir: /app
-    ports:
-      - "3000:3000"
     environment:
       - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/rootCA.crt
       - DB_HOST=db
@@ -45,37 +73,77 @@ services:
       - minio_root_password
       - jwt_secret
     command: npm start
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+          pids: 100
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
     networks:
       - app-network
     depends_on:
-      - db
-      - minio
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  # ==============================================================
+  # DATABASE – PostgreSQL
+  # ==============================================================
   db:
     image: postgres:15
-    secrets:
-      - postgres_password
     environment:
       - POSTGRES_USER=arepabuelas
       - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
       - POSTGRES_DB=arepabuelasdb
     volumes:
       - ./db/data:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./certs/db:/var/lib/postgresql/certs:ro
       - ./certs/ca:/usr/local/share/ca-certificates/ca:ro
+    secrets:
+      - postgres_password
     command: >
       postgres
       -c ssl=on
       -c ssl_cert_file=/var/lib/postgresql/certs/db.crt
       -c ssl_key_file=/var/lib/postgresql/certs/db.key
       -c ssl_ca_file=/usr/local/share/ca-certificates/ca/rootCA.crt
+    healthcheck:
+      test: >
+        CMD-SHELL,
+        pg_isready -U arepabuelas -d arepabuelasdb -h localhost ||
+        psql -U arepabuelas -d arepabuelasdb -h localhost -c "SELECT 1" > /dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 200
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
     networks:
       - app-network
+
+  # ==============================================================
+  # STORAGE – MinIO
+  # ==============================================================
   minio:
     image: minio/minio:latest
-    secrets:
-      - minio_root_user
-      - minio_root_password
     environment:
       - MINIO_ROOT_USER_FILE=/run/secrets/minio_root_user
       - MINIO_ROOT_PASSWORD_FILE=/run/secrets/minio_root_password
@@ -84,15 +152,34 @@ services:
       - ./certs/minio/minio.crt:/root/.minio/certs/public.crt:ro
       - ./certs/minio/minio.key:/root/.minio/certs/private.key:ro
       - ./certs/ca:/usr/local/share/ca-certificates/ca:ro
+    secrets:
+      - minio_root_user
+      - minio_root_password
     command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    healthcheck:
+      test: >
+        CMD-SHELL,
+        wget --quiet --tries=1 --spider http://localhost:9000/minio/health/live ||
+        curl -f http://localhost:9000/minio/health/live || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+          pids: 100
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
     networks:
       - app-network
-networks:
-  app-network:
-    driver: bridge
+
+# ==============================================================
+# SECRETS
+# ==============================================================
 secrets:
   postgres_password:
     file: .secrets/postgres_password

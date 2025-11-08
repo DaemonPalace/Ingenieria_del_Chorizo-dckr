@@ -191,62 +191,9 @@ ensureBuckets().catch((err) => {
   process.exit(1);
 });
 
-// Test route for PostgreSQL
-app.get("/api/hello", async (req, res, next) => {
-  try {
-    console.log("Testing PostgreSQL connection...");
-    const result = await pool.query("SELECT NOW()");
-    console.log("PostgreSQL query successful:", result.rows[0]);
-    res.json({ message: "Hello from Backend!", time: result.rows[0].now });
-  } catch (err) {
-    console.error("PostgreSQL connection error:", {
-      error: err.message,
-      stack: err.stack,
-    });
-    next(err);
-  }
-});
-
-// MinIO connection test endpoint
-app.get("/api/minio-test", async (req, res, next) => {
-  try {
-    console.log("Testing MinIO connection...");
-    const buckets = await minioClient.listBuckets();
-    console.log(
-      "Buckets listed:",
-      buckets.map((b) => b.name)
-    );
-    const bucketName = "arepabuelas-users";
-    const bucketExists = await minioClient.bucketExists(bucketName);
-    console.log(`Bucket ${bucketName} exists: ${bucketExists}`);
-    const testObjectName = `test_${Date.now()}.txt`;
-    await minioClient.putObject(
-      bucketName,
-      testObjectName,
-      Buffer.from("Test content"),
-      {
-        "Content-Type": "text/plain",
-      }
-    );
-    console.log(`Test object ${testObjectName} uploaded to ${bucketName}`);
-    const testObjectUrl = `http://${process.env.MINIO_HOST}:${process.env.MINIO_PORT}/${bucketName}/${testObjectName}`;
-    console.log(`Test object URL: ${testObjectUrl}`);
-    await minioClient.removeObject(bucketName, testObjectName);
-    console.log(`Test object ${testObjectName} removed`);
-    res.status(200).json({
-      message: "MinIO connection successful",
-      buckets: buckets.map((b) => b.name),
-      targetBucketExists: bucketExists,
-      testObjectUrl: testObjectUrl,
-    });
-  } catch (err) {
-    console.error("MinIO connection test failed:", {
-      error: err.message,
-      code: err.code,
-      stack: err.stack,
-    });
-    next(err);
-  }
+// In your Express app
+app.get('/health', (req, res) => {
+  res.status(200).send('healthy');
 });
 
 // ===============================

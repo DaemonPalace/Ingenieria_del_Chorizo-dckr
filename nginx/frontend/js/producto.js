@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 🔐 SESIÓN
   // ==========================
   const token = sessionStorage.getItem("authToken");
-  const API_BASE = `${window.location.origin}/api`;
+  const API_BASE = `/api`;
   const productId = localStorage.getItem("productoSeleccionado");
   const $container = document.getElementById("product-container");
 

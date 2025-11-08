@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       data.append("password", pass);
       data.append("foto", foto);
 
-      const res = await fetch("http://localhost:3000/api/register", {
+      const res = await fetch("/api/register", {
         method: "POST",
         body: data,
       });
