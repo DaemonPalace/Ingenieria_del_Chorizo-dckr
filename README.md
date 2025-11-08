@@ -91,7 +91,7 @@ sudo ./start.sh
 
 ---
 
-## 🔑 Credenciales por Defecto *(cambiar después de instalar)*
+## 🔑 Credenciales por Defecto
 
 **ADMIN:**  
 - Email: `superadmin@arepabuelas.com`  
