@@ -10,7 +10,8 @@
 - Instalar dependencias:
 
 ```bash
-sudo apt update && sudo apt install -y git docker.io docker-compose curl unzip
+sudo apt update && sudo apt upgrade
+sudo apt install -y git docker.io docker-compose curl unzip
 ```
 
 - Tener **permisos de sudo**.  
