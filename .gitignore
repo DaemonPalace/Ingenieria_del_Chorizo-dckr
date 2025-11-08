@@ -143,3 +143,4 @@ secrets/
 docker-compose.override.yml
 .docker/
 /.secrets
+/certs
