@@ -1,5 +1,4 @@
-# 🫓 AREPABUELAS DE LA ESQUINA
-# E-COMMERCE  
+# E-COMMERCE 🫓 AREPABUELAS DE LA ESQUINA
 ## Guía de Instalación en Kali Linux (Docker)
 
 **Equipo:** Ingeniería del Chorizo  
