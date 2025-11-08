@@ -1,4 +1,5 @@
-# 🫓 AREPABUELAS DE LA ESQUINA - E-COMMERCE  
+# 🫓 AREPABUELAS DE LA ESQUINA
+# E-COMMERCE  
 ## Guía de Instalación en Kali Linux (Docker)
 
 **Equipo:** Ingeniería del Chorizo  
@@ -45,34 +46,35 @@ sudo ./start.sh
 
 ---
 
-## 🧭 Menú de Opciones
-
-### Ingeniería del Chorizo Stack
-→ Instala **TODO**: base de datos, web, backend, proxy y SSL.  
-
+## 🧭 Menú de Opciones - Ingeniería del Chorizo Stack 
 
 ### Install Web Application
 → Instala toda la infraestructura de la aplicación.  
-→ Genera los certificados y secretos nuevamente, y regenera los archivos de instalación (docker-compose.yml, app.js, upload_images_only.js, ./secrets).
+→ Genera los certificados y secretos, y regenera los archivos de instalación (docker-compose.yml, app.js, upload_images_only.js, ./secrets, ./certs).
 → **BORRA TODOS LOS DATOS.**
 
 ### Update System/Repository
-→ Actualiza el sistema de la kali, actualiza el código desde GitHub y **reconstruye contenedores**.  
-→ **NO borra datos.**
+→ Actualiza el sistema de la kali, actualiza el código desde GitHub y **reconstruye contenedores**.
+→ Vuelve a instalar la infraestructura de la aplicación.
+→ **BORRA TODOS LOS DATOS.**
 
 ### Restart stack
 → Reinicia todos los servicios **sin perder datos.**
 
 ### Reset stack (⚠️ Full Wipe)
-→ **BORRA TODO:** base de datos, archivos, contenedores y los reinicia.  
+→ Reinicia base de datos, archivos y contenedores.
 → Solo para **empezar de cero.**
 
 ### Suspend (stop containers)
 → Detiene los servicios **sin eliminarlos.**  
-→ Para reanudar: usar opción 4.
+→ Para reanudar: usar opción 6.
+
+### Resume (Start container)
+→ Inicia nuevamente los contenedores **suspendidos.** 
+→ Solo usar despues de suspender los contenedores.
 
 ### Uninstall
-→ Elimina contenedores y persistencia.
+→ Elimina contenedores y persistencia completamente.
 → **BORRA TODOS LOS DATOS.**
 → Puedes reinstalar después.
 
