@@ -92,10 +92,10 @@ services:
           pids: 100
     security_opt:
       - no-new-privileges:true
+    ulimits:
       nofile:
-        nofile:
         soft: 65535
-        hard: 65535
+        hard: 65535 
     networks:
       - app-network
     depends_on:
@@ -144,8 +144,8 @@ services:
           pids: 200
     security_opt:
       - no-new-privileges:true
-        soft: 65535
-          nofile:
+    ulimits:
+      nofile:
         soft: 65535
         hard: 65535
     networks:
@@ -183,10 +183,10 @@ services:
           pids: 100
     security_opt:
       - no-new-privileges:true
-        hard: 65535
-          nofile:
+    ulimits:
+      nofile:
         soft: 65535
-        hard: 65535
+        hard: 65535 
     networks:
       - app-network
 
