@@ -24,7 +24,7 @@ Descargar el .zip de la carpeta que se encuentra en Teams y descomprimirla:
 
 ```bash
 unzip ingenieria_del_chorizo-dckr.zip -d ~
-cd ~/Ingenieria_del_Chorizo-dckr
+cd ~/Ingenieria_del_Chorizo-dckr-master
 ```
 
 (**ALTERNATIVAMENTE** ejecutar en terminal:
