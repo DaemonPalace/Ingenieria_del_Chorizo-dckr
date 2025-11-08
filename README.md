@@ -65,6 +65,7 @@ sudo ./start.sh
 → **BORRA TODOS LOS DATOS.**
 
 ### **Update System/Repository**
+**SOLO UTILIZAR SI SE CLONA EL REPOSITORIO**
 → Actualiza el sistema de la kali, actualiza el código desde GitHub y **reconstruye contenedores**.
 
 → Vuelve a instalar la infraestructura de la aplicación.
