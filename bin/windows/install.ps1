@@ -1,6 +1,6 @@
 Param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("development", "production", "dev", "prod", "d", "p")]
+    [ValidateSet("production", "prod", "p")]
     [string]$Mode
 )
 
@@ -11,31 +11,27 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Resolve-Path "$ScriptDir\..\.."
 Set-Location $ProjectRoot
 
-Write-Host "Installing in mode: $Mode"
+Write-Host "Installing in PRODUCTION mode..." -ForegroundColor Green
 
-# Normalize mode
-switch ($Mode) {
-    "dev" { $Mode = "development" }
-    "d"   { $Mode = "development" }
-    "prod" { $Mode = "production" }
-    "p"   { $Mode = "production" }
-}
-
-# === Clean old secrets ===
-Write-Host "Cleaning old secrets and backend app.js..."
+# === Clean old secrets & app files ===
+Write-Host "Cleaning old secrets and backend app files..."
 Remove-Item "$ProjectRoot\.secrets" -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory "$ProjectRoot\.secrets" | Out-Null
-Remove-Item "$ProjectRoot\backend\app.js" -Force -ErrorAction SilentlyContinue
 
-# === Generate secrets ===
+Remove-Item "$ProjectRoot\backend\app.js" -Force -ErrorAction SilentlyContinue
+Remove-Item "$ProjectRoot\backend\upload_images_only.js" -Force -ErrorAction SilentlyContinue
+
+# === Generate fresh secrets ===
 Function New-Secret {
-    param($Name)
+    param([string]$Name)
     $Path = "$ProjectRoot\.secrets\$Name"
+    $SecureRandom = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     $Bytes = New-Object byte[] 32
-    (New-Object System.Random).NextBytes($Bytes)
-    $Base64 = [System.Convert]::ToBase64String($Bytes)
-    $Secret = ($Base64 -replace '[^A-Za-z0-9]', '').Substring(0, [Math]::Min(32, $Base64.Length))
-    Set-Content -Path $Path -Value $Secret -Encoding ascii
+    $SecureRandom.GetBytes($Bytes)
+    $Base64 = [Convert]::ToBase64String($Bytes)
+    # Remove non-alphanumeric and truncate to 32 chars
+    $Secret = ($Base64 -replace '[^A-Za-z0-9]', '').Substring(0, 32)
+    Set-Content -Path $Path -Value $Secret -Encoding ASCII
     Write-Host "Generated secret: $Name"
 }
 
@@ -44,65 +40,57 @@ New-Secret "minio_root_user"
 New-Secret "minio_root_password"
 New-Secret "jwt_secret"
 
-# === Copy app.js ===
-if ($Mode -eq "development") {
-    Copy-Item "$ProjectRoot\backend\app.js.dev" "$ProjectRoot\backend\app.js" -Force
-    Copy-Item "$ProjectRoot\backend\upload_images_only.js.dev" "$ProjectRoot\backend\upload_images_only.js" -Force
-} else {
-    Copy-Item "$ProjectRoot\backend\app.js.prod" "$ProjectRoot\backend\app.js" -Force
-    Copy-Item "$ProjectRoot\backend\upload_images_only.js.prod" "$ProjectRoot\backend\upload_images_only.js" -Force
+# === Copy production app files ===
+$AppSrc = "$ProjectRoot\backend\app.js.prod"
+$UploadSrc = "$ProjectRoot\backend\upload_images_only.js.prod"
+
+if (-not (Test-Path $AppSrc)) {
+    Write-Error "Missing required file: $AppSrc"
+    exit 1
+}
+if (-not (Test-Path $UploadSrc)) {
+    Write-Error "Missing required file: $UploadSrc"
+    exit 1
 }
 
-# === docker-compose selection ===
-if ($Mode -eq "development") {
-    Copy-Item "$ProjectRoot\docker-compose.yml.dev" "$ProjectRoot\docker-compose.yml" -Force
-    Write-Host "Using docker-compose.yml.dev"
+Copy-Item $AppSrc "$ProjectRoot\backend\app.js" -Force
+Copy-Item $UploadSrc "$ProjectRoot\backend\upload_images_only.js" -Force
+Write-Host "Copied production app files"
 
-    # Create .env
-    $envContent = @'
-POSTGRES_USER=arepabuelas
-POSTGRES_PASSWORD={0}
-POSTGRES_DB=arepabuelasdb
-MINIO_ROOT_USER={1}
-MINIO_ROOT_PASSWORD={2}
-JWT_SECRET={3}
-STORAGE_URL=http://minio:9000
-MINIO_HOST=minio
-MINIO_PORT=9000
-'@ -f `
-    (Get-Content "$ProjectRoot\.secrets\postgres_password"),
-    (Get-Content "$ProjectRoot\.secrets\minio_root_user"),
-    (Get-Content "$ProjectRoot\.secrets\minio_root_password"),
-    (Get-Content "$ProjectRoot\.secrets\jwt_secret")
-
-    $envPath = Join-Path $ProjectRoot ".env"
-    $envContent | Out-File -FilePath $envPath -Encoding utf8 -Force
-    Write-Host "Generated .env file at: $envPath"
-}
-else {
-    Copy-Item "$ProjectRoot\docker-compose.yml.prod" "$ProjectRoot\docker-compose.yml" -Force
-    Remove-Item "$ProjectRoot\.env" -Force -ErrorAction SilentlyContinue
-    Write-Host "Using docker-compose.yml.prod"
+# === Use production docker-compose ===
+$ComposeSrc = "$ProjectRoot\docker-compose.yml.prod"
+if (-not (Test-Path $ComposeSrc)) {
+    Write-Error "Missing required file: $ComposeSrc"
+    exit 1
 }
 
-# === Certificates ===
+Copy-Item $ComposeSrc "$ProjectRoot\docker-compose.yml" -Force
+Write-Host "Using docker-compose.yml.prod"
+
+# Ensure no .env exists (production uses Docker secrets)
+Remove-Item "$ProjectRoot\.env" -Force -ErrorAction SilentlyContinue
+Remove-Item "$ProjectRoot\docker-vars.env" -Force -ErrorAction SilentlyContinue
+Write-Host "Environment: Docker secrets only (no .env)"
+
+# === Generate certificates (if script exists) ===
 $CertScript = "$ScriptDir\install-certificates.ps1"
 if (Test-Path $CertScript) {
     Write-Host "Generating certificates..."
     & $CertScript
 } else {
-    Write-Host "No certificate script found for Windows."
+    Write-Host "No certificate script found – skipping SSL generation."
 }
 
 # === Start Docker stack ===
-Write-Host "Starting Docker stack..."
+Write-Host "Building and starting production stack..." -ForegroundColor Cyan
 docker compose up -d --build
 
+# === Final Summary ===
 Write-Host ""
-Write-Host "========================================="
-Write-Host "Stack is running successfully!"
-Write-Host "Web: http://localhost"
-Write-Host "MinIO Console: http://localhost:9001"
-Write-Host "Secrets folder: $ProjectRoot\.secrets"
-Write-Host "App file: backend/app.js"
-Write-Host "========================================="
+Write-Host "=========================================" -ForegroundColor Green
+Write-Host "PRODUCTION STACK IS RUNNING!" -ForegroundColor Green
+Write-Host " • Web:           https://localhost" -ForegroundColor Yellow
+Write-Host " • MinIO Console: https://localhost:9001" -ForegroundColor Yellow
+Write-Host " • Secrets:       Handled by Docker" -ForegroundColor Cyan
+Write-Host " • App:           backend\app.js (from .prod)" -ForegroundColor Cyan
+Write-Host "=========================================" -ForegroundColor Green

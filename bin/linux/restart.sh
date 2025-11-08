@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "Stopping containers..."
-docker compose down -v
+docker compose down
 
 echo "Rebuilding images..."
 docker compose build

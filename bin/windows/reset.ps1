@@ -5,7 +5,7 @@ Write-Host "🧹 Stopping containers and removing volumes..."
 docker compose down -v
 
 Write-Host "🧼 Cleaning local data..."
-Remove-Item "./db/data/*", "./minio/data/*", "./.secrets/*" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "./db/data/*", "./minio/data/*", "./.secrets/*, ./backend/*.js" -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "🛠️ Rebuilding images (no cache)..."
 docker compose build --no-cache
