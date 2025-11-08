@@ -27,13 +27,13 @@ unzip ingenieria_del_chorizo-dckr.zip -d ~
 cd ~/Ingenieria_del_Chorizo-dckr
 ```
 
-Ejecutar en terminal:
+(**ALTERNATIVAMENTE** ejecutar en terminal:
 
 ```bash
 git clone https://github.com/DaemonPalace/Ingenieria_del_Chorizo-dckr.git
 cd Ingenieria_del_Chorizo-dckr
 ```
-
+)
 ---
 
 ## ⚙️ Paso 2: Iniciar Instalación
